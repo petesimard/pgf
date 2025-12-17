@@ -1,0 +1,132 @@
+import { useEffect, useRef, useState, useCallback } from 'react';
+import { io, Socket } from 'socket.io-client';
+import type { ServerToClientEvents, ClientToServerEvents, GameSession, GameDefinition } from '../types';
+
+type GameSocket = Socket<ServerToClientEvents, ClientToServerEvents>;
+
+interface UseSocketReturn {
+  socket: GameSocket | null;
+  connected: boolean;
+  session: GameSession | null;
+  games: GameDefinition[];
+  playerId: string | null;
+  error: string | null;
+  createSession: () => Promise<string>;
+  joinSession: (sessionId: string, name: string) => Promise<string>;
+  selectGame: (gameId: string) => void;
+  startGame: () => void;
+  endGame: () => void;
+  sendAction: (action: { type: string; payload?: unknown }) => void;
+  toggleQR: (show: boolean) => void;
+}
+
+export function useSocket(): UseSocketReturn {
+  const socketRef = useRef<GameSocket | null>(null);
+  const [connected, setConnected] = useState(false);
+  const [session, setSession] = useState<GameSession | null>(null);
+  const [games, setGames] = useState<GameDefinition[]>([]);
+  const [playerId, setPlayerId] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const serverUrl = import.meta.env.DEV ? 'http://localhost:3000' : window.location.origin;
+    const socket: GameSocket = io(serverUrl);
+    socketRef.current = socket;
+
+    socket.on('connect', () => {
+      setConnected(true);
+      setError(null);
+    });
+
+    socket.on('disconnect', () => {
+      setConnected(false);
+    });
+
+    socket.on('session:state', (newSession) => {
+      setSession(newSession);
+    });
+
+    socket.on('session:error', (errorMsg) => {
+      setError(errorMsg);
+    });
+
+    socket.on('games:list', (gamesList) => {
+      setGames(gamesList);
+    });
+
+    return () => {
+      socket.disconnect();
+    };
+  }, []);
+
+  const createSession = useCallback((): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      if (!socketRef.current) {
+        reject(new Error('Not connected'));
+        return;
+      }
+
+      socketRef.current.emit('session:create', (response) => {
+        if (response.success && response.sessionId) {
+          resolve(response.sessionId);
+        } else {
+          reject(new Error(response.error || 'Failed to create session'));
+        }
+      });
+    });
+  }, []);
+
+  const joinSession = useCallback((sessionId: string, name: string): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      if (!socketRef.current) {
+        reject(new Error('Not connected'));
+        return;
+      }
+
+      socketRef.current.emit('player:join', { sessionId, name }, (response) => {
+        if (response.success && response.playerId) {
+          setPlayerId(response.playerId);
+          resolve(response.playerId);
+        } else {
+          reject(new Error(response.error || 'Failed to join session'));
+        }
+      });
+    });
+  }, []);
+
+  const selectGame = useCallback((gameId: string) => {
+    socketRef.current?.emit('game:select', gameId);
+  }, []);
+
+  const startGame = useCallback(() => {
+    socketRef.current?.emit('game:start');
+  }, []);
+
+  const endGame = useCallback(() => {
+    socketRef.current?.emit('game:end');
+  }, []);
+
+  const sendAction = useCallback((action: { type: string; payload?: unknown }) => {
+    socketRef.current?.emit('game:action', action);
+  }, []);
+
+  const toggleQR = useCallback((show: boolean) => {
+    socketRef.current?.emit('qr:toggle', show);
+  }, []);
+
+  return {
+    socket: socketRef.current,
+    connected,
+    session,
+    games,
+    playerId,
+    error,
+    createSession,
+    joinSession,
+    selectGame,
+    startGame,
+    endGame,
+    sendAction,
+    toggleQR,
+  };
+}
