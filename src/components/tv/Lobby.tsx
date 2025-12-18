@@ -1,4 +1,5 @@
 import { QRCodeSVG } from 'qrcode.react';
+import { useState, useEffect } from 'react';
 import type { GameSession } from '../../types';
 import PlayerList from '../shared/PlayerList';
 
@@ -7,7 +8,20 @@ interface LobbyProps {
 }
 
 function Lobby({ session }: LobbyProps) {
-  const joinUrl = `${window.location.origin}/join/${session.id}`;
+  const [serverUrl, setServerUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    // Fetch the server URL from the backend
+    fetch('/api/server-url')
+      .then((res) => res.json())
+      .then((data) => setServerUrl(data.url))
+      .catch(() => {
+        // Fallback to window.location.origin if fetch fails
+        setServerUrl(window.location.origin);
+      });
+  }, []);
+
+  const joinUrl = serverUrl ? `${serverUrl}/join/${session.id}` : `${window.location.origin}/join/${session.id}`;
 
   return (
     <div className="tv-container">

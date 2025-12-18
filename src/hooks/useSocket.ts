@@ -29,8 +29,9 @@ export function useSocket(): UseSocketReturn {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const serverUrl = import.meta.env.DEV ? 'http://localhost:3000' : window.location.origin;
-    const socket: GameSocket = io(serverUrl);
+    // Always use window.location.origin to ensure phones can connect
+    // In dev mode, Vite proxy will forward /socket.io to the backend
+    const socket: GameSocket = io(window.location.origin);
     socketRef.current = socket;
 
     socket.on('connect', () => {

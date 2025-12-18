@@ -1,9 +1,11 @@
+import 'dotenv/config';
 import express from 'express';
 import { createServer } from 'http';
 import { Server } from 'socket.io';
 import { v4 as uuidv4 } from 'uuid';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { hostname as getHostname } from 'os';
 import type { ServerToClientEvents, ClientToServerEvents, Player, GameDefinition } from '../src/types.js';
 import type { ServerGameSession, GameHandler, GameServer, GameSocket } from './types.js';
 import { buzzRaceGame } from './games/buzz-race.js';
@@ -11,13 +13,21 @@ import { buzzRaceGame } from './games/buzz-race.js';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+// Server configuration
+const PORT = process.env.PORT || 3000;
+const HOSTNAME = process.env.HOSTNAME || getHostname();
+// In development, the frontend is served by Vite on port 5173
+const CLIENT_PORT = process.env.NODE_ENV === 'production' ? PORT : 5173;
+const SERVER_URL = `http://${HOSTNAME}:${CLIENT_PORT}`;
+
 const app = express();
 const httpServer = createServer(app);
 
 const io: GameServer = new Server<ClientToServerEvents, ServerToClientEvents>(httpServer, {
   cors: {
-    origin: ['http://localhost:5173', 'http://localhost:3000'],
+    origin: true, // Allow all origins for phone connections
     methods: ['GET', 'POST'],
+    credentials: true,
   },
 });
 
@@ -322,6 +332,11 @@ io.on('connection', (socket: GameSocket) => {
   });
 });
 
+// API endpoint to get server URL
+app.get('/api/server-url', (_req, res) => {
+  res.json({ url: SERVER_URL });
+});
+
 // Serve static files in production
 if (process.env.NODE_ENV === 'production') {
   app.use(express.static(path.join(__dirname, '../dist')));
@@ -330,7 +345,9 @@ if (process.env.NODE_ENV === 'production') {
   });
 }
 
-const PORT = process.env.PORT || 3000;
-httpServer.listen(PORT, () => {
-  console.log(`Server running on http://localhost:${PORT}`);
+httpServer.listen(PORT, '0.0.0.0', () => {
+  console.log(`\n🎮 Party Game Server`);
+  console.log(`   Local:   http://localhost:${PORT}`);
+  console.log(`   Network: ${SERVER_URL}`);
+  console.log(`\n📱 Phones can connect using: ${SERVER_URL}\n`);
 });

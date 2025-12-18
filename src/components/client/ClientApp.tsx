@@ -1,17 +1,40 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { useSocket } from '../../hooks/useSocket';
 import JoinForm from './JoinForm';
 import ClientLobby from './ClientLobby';
 import ClientGameContainer from './ClientGameContainer';
 
+const PLAYER_NAME_KEY = 'playerName';
+
 function ClientApp() {
   const { sessionId } = useParams<{ sessionId: string }>();
   const { connected, session, games, playerId, error, joinSession, selectGame, startGame, endGame, sendAction, toggleQR } = useSocket();
   const [joinError, setJoinError] = useState<string | null>(null);
   const [hasJoined, setHasJoined] = useState(false);
+  const [autoJoining, setAutoJoining] = useState(false);
 
-  if (!connected) {
+  // Auto-join with saved name when connected
+  useEffect(() => {
+    if (connected && !hasJoined && !autoJoining && sessionId) {
+      const savedName = localStorage.getItem(PLAYER_NAME_KEY);
+      if (savedName) {
+        setAutoJoining(true);
+        joinSession(sessionId, savedName)
+          .then(() => {
+            setHasJoined(true);
+            setJoinError(null);
+            setAutoJoining(false);
+          })
+          .catch((err) => {
+            setJoinError(err instanceof Error ? err.message : 'Failed to join');
+            setAutoJoining(false);
+          });
+      }
+    }
+  }, [connected, hasJoined, autoJoining, sessionId, joinSession]);
+
+  if (!connected || autoJoining) {
     return (
       <div className="client-container">
         <div className="waiting">
