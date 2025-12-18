@@ -16,14 +16,24 @@
     "test:debug": "playwright test --debug"
   },
   "dependencies": {
+    "@radix-ui/react-avatar": "^1.1.11",
+    "@radix-ui/react-dialog": "^1.1.15",
+    "@radix-ui/react-label": "^2.1.8",
+    "@radix-ui/react-separator": "^1.1.8",
+    "@radix-ui/react-slot": "^1.2.4",
+    "@radix-ui/react-switch": "^1.2.6",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
     "dotenv": "^17.2.3",
     "express": "^4.18.2",
+    "lucide-react": "^0.562.0",
     "qrcode.react": "^3.1.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-router-dom": "^6.20.0",
     "socket.io": "^4.7.2",
     "socket.io-client": "^4.7.2",
+    "tailwind-merge": "^3.4.0",
     "uuid": "^9.0.1"
   },
   "devDependencies": {
@@ -34,8 +44,12 @@
     "@types/react-dom": "^18.2.17",
     "@types/uuid": "^9.0.7",
     "@vitejs/plugin-react": "^4.2.0",
+    "autoprefixer": "^10.4.23",
     "concurrently": "^8.2.2",
     "playwright": "^1.57.0",
+    "postcss": "^8.5.6",
+    "tailwindcss": "^3.4.19",
+    "tailwindcss-animate": "^1.0.7",
     "tsx": "^4.6.0",
     "typescript": "^5.3.2",
     "vite": "^5.0.4"

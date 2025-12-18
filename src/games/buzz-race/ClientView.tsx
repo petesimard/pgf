@@ -1,5 +1,8 @@
 import ScoreBox from '@/components/shared/ScoreBox';
 import type { ClientViewProps } from '../types';
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import { cn } from '@/lib/utils';
 
 interface BuzzRaceState {
   currentPlayerId: string | null;
@@ -13,10 +16,10 @@ function ClientView({ player, players, gameState, sendAction }: ClientViewProps)
 
   if (!state) {
     return (
-      <div className="buzz-client">
-        <div className="waiting">
-          <div className="spinner"></div>
-          <h2>Loading game...</h2>
+      <div className="flex-1 flex flex-col p-4">
+        <div className="text-center p-8 bg-card rounded-2xl border-3 shadow-playful">
+          <div className="w-12 h-12 border-[4px] border-muted border-t-primary rounded-full animate-spin mx-auto mb-4"></div>
+          <h2 className="text-muted-foreground font-extrabold">Loading game...</h2>
         </div>
       </div>
     );
@@ -24,30 +27,40 @@ function ClientView({ player, players, gameState, sendAction }: ClientViewProps)
 
   const currentPlayer = players.find((p) => p.id === state.currentPlayerId);
   const isMyTurn = state.currentPlayerId === player.id;
-  const myScore = state.scores[player.id] || 0;
 
   const handleBuzz = () => {
     sendAction({ type: 'buzz' });
   };
 
   return (
-    <div className="buzz-client">
+    <div className="flex-1 flex flex-col p-4">
       {/* Status */}
-      <div className={`buzz-status ${isMyTurn ? 'your-turn' : ''}`}>
-        <div className="current">Current Player:</div>
-        <div className="current-name">
+      <Card
+        className={cn(
+          "text-center p-4 bg-card rounded-xl mb-4",
+          isMyTurn && "bg-gradient-to-br from-success/20 to-success/10 border-2 border-success"
+        )}
+      >
+        <div className="text-xl text-muted-foreground">Current Player:</div>
+        <div className={cn(
+          "text-3xl font-bold mt-1",
+          isMyTurn ? "text-success" : "text-primary"
+        )}>
           {isMyTurn ? 'YOUR TURN!' : currentPlayer?.name || '...'}
         </div>
-      </div>
+      </Card>
 
       {/* Buzz Button */}
-      <div className="buzz-button-container">
-        <button className="buzz-button" onClick={handleBuzz}>
+      <div className="flex-1 flex items-center justify-center p-8">
+        <Button
+          onClick={handleBuzz}
+          className="w-[200px] h-[200px] rounded-full border-0 bg-gradient-to-br from-destructive to-[#dc2626] text-white text-5xl font-extrabold shadow-[0_10px_30px_rgba(239,68,68,0.4)] hover:shadow-[0_15px_40px_rgba(239,68,68,0.5)] active:scale-95 transition-all uppercase"
+        >
           BUZZ!
-        </button>
+        </Button>
       </div>
 
-      {/* Your Score */}
+      {/* Scoreboard */}
       <ScoreBox players={players} scores={state.scores} />
     </div>
   );

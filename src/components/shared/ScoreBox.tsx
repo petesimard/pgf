@@ -13,7 +13,7 @@ function ScoreBox({ players, scores }: ScoreBoxProps) {
     .sort((a, b) => (scores[b.id] || 0) - (scores[a.id] || 0));
 
   return (
-    <div className="scoreboard">
+    <div className="flex flex-wrap gap-4 p-6 bg-card justify-center">
       {sortedPlayers.map((player) => {
         const score = scores[player.id] || 0;
         return <PlayerScore key={player.id} player={player} score={score} />;

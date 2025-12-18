@@ -36,10 +36,10 @@ function ClientApp() {
 
   if (!connected || autoJoining) {
     return (
-      <div className="client-container">
-        <div className="waiting">
-          <div className="spinner"></div>
-          <h2>Connecting...</h2>
+      <div className="min-h-screen flex flex-col p-4 max-w-lg mx-auto bg-background items-center justify-center">
+        <div className="text-center p-8 bg-card rounded-2xl border-3 shadow-playful">
+          <div className="w-12 h-12 border-[4px] border-muted border-t-primary rounded-full animate-spin mx-auto mb-4"></div>
+          <h2 className="text-muted-foreground font-extrabold">Connecting...</h2>
         </div>
       </div>
     );
@@ -63,10 +63,14 @@ function ClientApp() {
   // Show join form if not joined yet
   if (!hasJoined || !playerId) {
     return (
-      <div className="client-container">
-        <div className="client-header">
-          <h1>Join Game</h1>
-          <p>Session: <strong>{sessionId}</strong></p>
+      <div className="min-h-screen flex flex-col p-4 max-w-lg mx-auto bg-background">
+        <div className="text-center py-5 px-6 mb-5 bg-card rounded-2xl border-3 shadow-playful">
+          <h1 className="text-3xl font-black text-foreground text-shadow-sm mb-1 uppercase">
+            Join Game
+          </h1>
+          <p className="text-muted-foreground font-semibold m-0">
+            Session: <strong>{sessionId}</strong>
+          </p>
         </div>
         <JoinForm onJoin={handleJoin} error={joinError || error} />
       </div>
@@ -78,10 +82,10 @@ function ClientApp() {
 
   if (!session || !currentPlayer) {
     return (
-      <div className="client-container">
-        <div className="waiting">
-          <div className="spinner"></div>
-          <h2>Loading session...</h2>
+      <div className="min-h-screen flex flex-col p-4 max-w-lg mx-auto bg-background items-center justify-center">
+        <div className="text-center p-8 bg-card rounded-2xl border-3 shadow-playful">
+          <div className="w-12 h-12 border-[4px] border-muted border-t-primary rounded-full animate-spin mx-auto mb-4"></div>
+          <h2 className="text-muted-foreground font-extrabold">Loading session...</h2>
         </div>
       </div>
     );
@@ -92,15 +96,20 @@ function ClientApp() {
     // If player is inactive, show waiting screen
     if (!currentPlayer.isActive) {
       return (
-        <div className="client-container">
-          <div className="client-header">
-            <h1>Game in Progress</h1>
+        <div className="min-h-screen flex flex-col p-4 max-w-lg mx-auto bg-background">
+          <div className="text-center py-5 px-6 mb-5 bg-card rounded-2xl border-3 shadow-playful">
+            <h1 className="text-3xl font-black text-foreground text-shadow-sm uppercase">
+              Game in Progress
+            </h1>
           </div>
-          <div className="waiting" style={{ marginTop: '2rem' }}>
-            <h2>Waiting for current game to finish</h2>
-            <p style={{ marginTop: '1rem', color: 'var(--text-secondary)' }}>
+          <div className="text-center p-8 bg-card rounded-2xl border-3 shadow-playful mt-8">
+            <h2 className="text-muted-foreground font-extrabold mb-4">
+              Waiting for current game to finish
+            </h2>
+            <p className="mt-4 text-muted-foreground">
               You'll be able to join the next game when this one ends.
             </p>
+            <div className="w-12 h-12 border-[4px] border-muted border-t-primary rounded-full animate-spin mx-auto mt-4"></div>
           </div>
         </div>
       );
