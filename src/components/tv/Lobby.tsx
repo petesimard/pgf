@@ -27,6 +27,9 @@ function Lobby({ session }: LobbyProps) {
     <div className="tv-container">
       <div className="tv-header">
         <h1>Phone Party</h1>
+        <p style={{ fontSize: '1.25rem', color: '#5d5d5d', fontWeight: 600, marginTop: '0.5rem' }}>
+          Scan the code to join the fun!
+        </p>
       </div>
 
       <div className="qr-section">
