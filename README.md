@@ -40,6 +40,30 @@ Then:
 | `npm run dev:client` | Start client only (port 5173) |
 | `npm run build` | Build for production |
 | `npm start` | Run production server |
+| `npm test` | Run E2E tests with Playwright |
+| `npm run test:ui` | Run tests in interactive UI mode |
+| `npm run test:headed` | Run tests with visible browser |
+| `npm run test:debug` | Run tests in debug mode |
+
+## Testing
+
+The project includes automated E2E tests using Playwright that simulate the full multi-device experience:
+
+- **Automated Testing**: Tests automatically start dev servers, create sessions, and simulate multiple clients
+- **Multi-Client Testing**: Tests verify TV display, multiple phone clients, and Game Master controls
+- **Auto-Join Testing**: Verifies localStorage persistence and automatic rejoin functionality
+- **Smart Server Detection**: Tests detect if dev servers are already running and reuse them for faster testing
+
+Run tests with:
+```bash
+npm test                # Run all tests headlessly
+npm run test:headed     # Watch tests run in browser
+npm run test:ui         # Interactive test UI
+```
+
+**Tip**: If you already have `npm run dev` running, tests will use those servers and run faster (no startup/shutdown overhead).
+
+Tests are located in `tests/` directory and automatically manage server lifecycle.
 
 ## Project Structure
 

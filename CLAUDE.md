@@ -1,0 +1,207 @@
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+## Project Overview
+
+Party Game Framework (PGF) is a web-based multiplayer party game system with two distinct client types:
+- **TV Hub**: Large screen display showing QR codes, player lists, and game content
+- **Phone Clients**: Players join by scanning QR code, first player becomes Game Master
+
+## Development Commands
+
+```bash
+npm run dev           # Start both client (port 5173) and server (port 3000) with hot reload
+npm run dev:server    # Server only
+npm run dev:client    # Client only (Vite)
+npm run build         # TypeScript compilation + Vite build
+npm start             # Production server
+npm test              # Run E2E tests with Playwright (headless)
+npm run test:headed   # Run tests with visible browser
+npm run test:ui       # Interactive Playwright UI
+npm run test:debug    # Debug mode for tests
+```
+
+## Testing
+
+E2E tests use Playwright to simulate the full multi-device experience:
+
+- Tests automatically detect if dev servers are running on ports 3000/5173
+- If servers are already running, tests reuse them (faster, no shutdown)
+- If servers aren't running, tests start them and stop them after completion
+- Simulates TV display and multiple phone clients in separate browser contexts
+- Tests multi-client join flow, Game Master controls, and game start
+- Tests localStorage persistence and auto-join functionality
+- Tests located in `tests/` directory
+
+**Important test selectors** (if adding new tests):
+- Client lobby: `.gm-badge`, `.game-selection`, `.waiting`
+- Game selection: `.game-option` (not buttons)
+- Start button: `button:has-text("Start [Game Name]")` (includes game name)
+- Buzz Race game: `.buzz-game-tv` (TV), `.buzz-client` and `.buzz-button` (phone)
+
+## Network Configuration
+
+The app supports local network connections for phones:
+
+- Server binds to `0.0.0.0` to accept network connections
+- Vite dev server also binds to `0.0.0.0` with `allowedHosts` configured
+- Environment variables in `.env`:
+  - `PORT`: Server port (default 3000)
+  - `HOSTNAME`: Hostname for QR code URL (defaults to machine hostname from `os.hostname()`)
+- The QR code URL points to Vite dev server (port 5173) in development, Express server in production
+- Socket.IO connections use `window.location.origin` to work from any device
+- CORS is configured to allow all origins for phone connectivity
+
+## Architecture: Dual Client System
+
+This is NOT a traditional single-page app. There are two completely different UIs:
+
+### TV Client (`/tv` route)
+- **Purpose**: Display on large screen/TV
+- **Components**: `src/components/tv/`
+- **Cannot**: Join as player, send game actions
+- **Can**: Create/join sessions, display QR codes, show game state
+- **Entry**: Opens a session and displays its ID as a QR code
+
+### Phone Client (`/join/:sessionId` route)
+- **Purpose**: Player controllers on mobile devices
+- **Components**: `src/components/client/`
+- **Cannot**: Display game visuals (TV does this)
+- **Can**: Join session, become Game Master, send actions, control games
+- **Entry**: Scans QR code to get session ID
+- **Persistence**: Player names stored in localStorage and auto-join on subsequent visits
+
+### Game Master Role
+- First player to join becomes Game Master
+- Only Game Master can: select games, start games, end games, toggle QR
+- If Game Master disconnects, role transfers to next connected player
+- Game Master is just a player with extra permissions, not a separate entity
+
+## Socket.IO Communication
+
+All real-time communication flows through Socket.IO (defined in `src/types.ts`):
+
+### Key Events
+- `session:create` / `session:join`: TV creates/rejoins sessions
+- `player:join`: Phone joins session with name
+- `session:state`: Broadcasts full session state to all clients
+- `game:select` / `game:start` / `game:end`: Game Master controls
+- `game:action`: Players send game-specific actions
+- `qr:toggle`: Game Master controls QR visibility during games
+
+### Session Management
+- Sessions stored in `Map<string, ServerGameSession>` in server memory
+- Session IDs are 8-character uppercase UUIDs
+- Sessions cleanup 60s after all players disconnect and TV disconnects
+- Socket-to-session mapping tracks TV vs player connections
+
+## Game System Architecture
+
+Games have **two independent implementations**:
+
+### Server-Side (`server/games/*.ts`)
+Implements `GameHandler` interface:
+- `onStart()`: Initialize game state
+- `onEnd()`: Clean up
+- `onAction()`: Process player actions
+- `onPlayerJoin()` / `onPlayerLeave()`: Optional lifecycle hooks
+- Registered in `server/index.ts` via `games.set(gameHandler.id, gameHandler)`
+
+### Client-Side (`src/games/*/`)
+Implements `GameRegistration` interface:
+- `TVView` component: What displays on TV
+- `ClientView` component: What displays on phone
+- Registered in `src/games/index.ts`
+
+**Important**: Game IDs must match between server and client registrations.
+
+### Game State Flow
+1. Server stores game state in `session.gameState`
+2. Server broadcasts via `session:state` event
+3. TV and phone components receive state and render independently
+4. Players send actions via `game:action` events
+5. Server validates and updates state
+6. Loop continues
+
+## Type System
+
+Three key type files define the contract:
+
+1. **`src/types.ts`**: Shared client/server types
+   - `Player`, `GameSession`, `GameDefinition`
+   - `ServerToClientEvents`, `ClientToServerEvents`
+
+2. **`server/types.ts`**: Server-only extensions
+   - `ServerGameSession` extends `GameSession` with socket mappings
+   - `GameHandler` interface for server-side game logic
+
+3. **`src/games/types.ts`**: Client-side game component props
+   - `TVViewProps`, `ClientViewProps`
+   - `GameRegistration` interface
+
+## Common Development Scenarios
+
+### Adding a New Game
+
+1. Create server handler in `server/games/your-game.ts`:
+   ```typescript
+   import type { GameHandler } from '../types.js';
+
+   export const yourGame: GameHandler = {
+     id: 'your-game',
+     name: 'Your Game',
+     description: 'Description',
+     minPlayers: 2,
+     maxPlayers: 10,
+
+     onStart(session, io) {
+       session.gameState = { /* initial state */ };
+     },
+
+     onEnd(session, io) {
+       session.gameState = null;
+     },
+
+     onAction(session, io, playerId, action) {
+       // Handle action.type and action.payload
+     },
+   };
+   ```
+
+2. Register in `server/index.ts`:
+   ```typescript
+   import { yourGame } from './games/your-game.js';
+   games.set(yourGame.id, yourGame);
+   ```
+
+3. Create client components in `src/games/your-game/`:
+   - `TVView.tsx`: Displays game on TV
+   - `ClientView.tsx`: Player controls on phone
+   - `index.ts`: Export registration
+
+4. Register in `src/games/index.ts`:
+   ```typescript
+   import { yourGame } from './your-game';
+   export const games: GameRegistration[] = [buzzRaceGame, yourGame];
+   ```
+
+### Testing Multi-Device Setup
+
+1. Start dev server: `npm run dev`
+2. Open TV view: `http://localhost:5173/tv`
+3. On phone (same network): Scan QR code or navigate to displayed URL
+4. First phone becomes Game Master and sees game selection controls
+
+### Debugging Socket Issues
+
+- Server logs all connections/disconnections with socket IDs
+- Check `socketToSession` mapping to see which sockets are in which sessions
+- Session state is always source of truth, broadcasted via `session:state`
+- If state is out of sync, check that `broadcastSessionState()` is called after mutations
+
+## File Imports
+
+- Server files use `.js` extensions in imports (TypeScript outputs to `.js`)
+- Client files use standard TypeScript imports (no extension)
+- Shared types in `src/types.ts` imported as `'../src/types.js'` from server
