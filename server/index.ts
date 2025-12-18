@@ -199,36 +199,35 @@ io.on('connection', (socket: GameSocket) => {
       return;
     }
 
-    // Check if in a game that's already started and not showing QR
-    if (session.status === 'playing' && !session.showQRCode) {
-      callback({ success: false, error: 'Game in progress, cannot join' });
-      return;
-    }
+    // Check for duplicate device connection (only in production)
+    if (process.env.NODE_ENV === 'production') {
+      const existingPlayerId = session.deviceToPlayer.get(deviceId);
+      if (existingPlayerId) {
+        const existingPlayer = session.players.find((p) => p.id === existingPlayerId);
+        if (existingPlayer) {
+          console.log(`Duplicate connection detected for device ${deviceId}, removing old connection for ${existingPlayer.name}`);
 
-    // Check for duplicate device connection
-    const existingPlayerId = session.deviceToPlayer.get(deviceId);
-    if (existingPlayerId) {
-      const existingPlayer = session.players.find((p) => p.id === existingPlayerId);
-      if (existingPlayer) {
-        console.log(`Duplicate connection detected for device ${deviceId}, removing old connection for ${existingPlayer.name}`);
-
-        // Disconnect the old socket
-        const oldSocketId = session.playerSockets.get(existingPlayerId);
-        if (oldSocketId) {
-          const oldSocketMapping = socketToSession.get(oldSocketId);
-          if (oldSocketMapping) {
-            socketToSession.delete(oldSocketId);
+          // Disconnect the old socket
+          const oldSocketId = session.playerSockets.get(existingPlayerId);
+          if (oldSocketId) {
+            const oldSocketMapping = socketToSession.get(oldSocketId);
+            if (oldSocketMapping) {
+              socketToSession.delete(oldSocketId);
+            }
+            io.to(oldSocketId).disconnectSockets();
           }
-          io.to(oldSocketId).disconnectSockets();
-        }
 
-        // Remove the old player
-        removePlayer(session, existingPlayerId, 'duplicate connection');
+          // Remove the old player
+          removePlayer(session, existingPlayerId, 'duplicate connection');
+        }
       }
     }
 
     const playerId = uuidv4();
     const isFirstPlayer = session.players.length === 0;
+
+    // If a game is in progress, player joins as inactive (waiting in lobby)
+    const isActive = session.status !== 'playing';
 
     const player: Player = {
       id: playerId,
@@ -236,6 +235,7 @@ io.on('connection', (socket: GameSocket) => {
       isGameMaster: isFirstPlayer,
       connected: true,
       deviceId,
+      isActive,
     };
 
     session.players.push(player);
@@ -244,7 +244,7 @@ io.on('connection', (socket: GameSocket) => {
     session.deviceToPlayer.set(deviceId, playerId);
     socketToSession.set(socket.id, { sessionId: session.id, playerId, isTV: false });
 
-    console.log(`Player ${player.name} joined session ${session.id} (GM: ${isFirstPlayer})`);
+    console.log(`Player ${player.name} joined session ${session.id} (GM: ${isFirstPlayer}, Active: ${isActive})`);
 
     callback({ success: true, playerId });
 
@@ -254,8 +254,8 @@ io.on('connection', (socket: GameSocket) => {
     // Send games list to the new player
     socket.emit('games:list', getGamesList());
 
-    // Notify game if in progress
-    if (session.status === 'playing' && session.currentGameId) {
+    // Only notify game if player is active
+    if (isActive && session.status === 'playing' && session.currentGameId) {
       const game = games.get(session.currentGameId);
       game?.onPlayerJoin?.(session, io, player);
     }
@@ -293,9 +293,9 @@ io.on('connection', (socket: GameSocket) => {
     const game = games.get(session.currentGameId);
     if (!game) return;
 
-    // Check minimum players
-    const connectedPlayers = session.players.filter((p) => p.connected).length;
-    if (connectedPlayers < game.minPlayers) {
+    // Check minimum players (only count active players)
+    const activePlayers = session.players.filter((p) => p.connected && p.isActive).length;
+    if (activePlayers < game.minPlayers) {
       socket.emit('session:error', `Need at least ${game.minPlayers} players to start`);
       return;
     }
@@ -330,6 +330,14 @@ io.on('connection', (socket: GameSocket) => {
     session.gameState = null;
     session.showQRCode = true;
 
+    // Activate all waiting players when game ends
+    session.players.forEach((p) => {
+      if (!p.isActive) {
+        p.isActive = true;
+        console.log(`Player ${p.name} activated and moved to lobby`);
+      }
+    });
+
     console.log('Game ended, returning to lobby');
     broadcastSessionState(session);
   });
@@ -341,6 +349,10 @@ io.on('connection', (socket: GameSocket) => {
 
     const session = sessions.get(mapping.sessionId);
     if (!session || session.status !== 'playing' || !session.currentGameId) return;
+
+    // Only allow active players to send actions
+    const player = session.players.find((p) => p.id === mapping.playerId);
+    if (!player?.isActive) return;
 
     const game = games.get(session.currentGameId);
     if (!game) return;

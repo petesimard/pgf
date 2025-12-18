@@ -5,19 +5,41 @@
 }
 
 :root {
-  --primary-color: #6366f1;
-  --primary-hover: #4f46e5;
+  /* Primary colors - playful Phone Party theme */
+  --primary-color: #5dd9c1;
+  --primary-hover: #4bc4ae;
+  --accent-pink: #ff4081;
+  --accent-pink-light: #ff6b9d;
+
+  /* Status colors */
   --success-color: #22c55e;
-  --error-color: #ef4444;
+  --error-color: #ff4444;
   --warning-color: #f59e0b;
+
+  /* Background colors - warm and inviting */
+  --landing-bg: #f5e6c8;
+  --card-bg: #ffecc5;
+
+  /* Text colors */
+  --text-primary: #2d2d2d;
+  --text-secondary: #5d5d5d;
+  --text-muted: #7d7d7d;
+
+  /* Border and shadow */
+  --border-primary: #2d2d2d;
+  --border-width: 3px;
+  --shadow-sm: 2px 2px 0px rgba(0, 0, 0, 0.3);
+  --shadow-md: 3px 3px 0px rgba(0, 0, 0, 0.3);
+  --shadow-lg: 4px 4px 0px rgba(0, 0, 0, 0.3);
+
+  /* Legacy dark theme variables (for backward compatibility with Buzz Race) */
   --bg-dark: #0f172a;
   --bg-card: #1e293b;
-  --text-primary: #f8fafc;
-  --text-secondary: #94a3b8;
   --border-color: #334155;
-  --landing-bg: #f5e6c8;
-  --landing-btn: #5dd9c1;
-  --landing-btn-hover: #4bc4ae;
+
+  /* Convenience aliases */
+  --landing-btn: var(--primary-color);
+  --landing-btn-hover: var(--primary-hover);
 }
 
 body {
@@ -142,6 +164,11 @@ body {
   filter: grayscale(0.5);
 }
 
+.player-card.waiting {
+  opacity: 0.7;
+  border-style: dashed;
+}
+
 .player-avatar {
   width: 40px;
   height: 40px;
@@ -166,6 +193,18 @@ body {
 
 .gm-badge {
   background: #ff4081;
+  color: white;
+  padding: 0.25rem 0.65rem;
+  border-radius: 0.5rem;
+  font-size: 0.7rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border: 2px solid #2d2d2d;
+}
+
+.waiting-badge {
+  background: var(--warning-color);
   color: white;
   padding: 0.25rem 0.65rem;
   border-radius: 0.5rem;
@@ -337,8 +376,7 @@ body {
 
 .game-option.selected {
   border-color: var(--landing-btn);
-  background: linear-gradient(to bottom, var(--landing-btn) 0%, var(--landing-btn) 30%, white 30%);
-  box-shadow: 5px 5px 0px rgba(0, 0, 0, 0.3);
+  box-shadow: 7px 7px 0px rgba(0, 0, 0, 0.3);
 }
 
 .game-option h3 {
@@ -524,7 +562,7 @@ body {
 .buzz-status {
   text-align: center;
   padding: 1rem;
-  background: var(--bg-card);
+  background: var(--card-bg);
   border-radius: 0.75rem;
   margin-bottom: 1rem;
 }
@@ -581,7 +619,7 @@ body {
 .your-score {
   text-align: center;
   padding: 1rem;
-  background: var(--bg-card);
+  background: var(--card-bg);
   border-radius: 0.75rem;
 }
 
@@ -921,22 +959,29 @@ body {
   top: 1rem;
   right: 1rem;
   z-index: 1000;
-  width: 50px;
-  height: 50px;
-  background: var(--bg-card);
-  border: 2px solid var(--border-color);
-  border-radius: 0.5rem;
+  width: 54px;
+  height: 54px;
+  background: white;
+  border: 3px solid #2d2d2d;
+  border-radius: 1rem;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 0;
-  transition: all 0.3s;
+  transition: all 0.2s;
+  box-shadow: 3px 3px 0px rgba(0, 0, 0, 0.3);
 }
 
 .hamburger-button:hover {
-  border-color: var(--primary-color);
-  background: var(--bg-dark);
+  transform: translateY(-2px);
+  box-shadow: 4px 4px 0px rgba(0, 0, 0, 0.3);
+  border-color: var(--landing-btn);
+}
+
+.hamburger-button:active {
+  transform: translateY(0px);
+  box-shadow: 2px 2px 0px rgba(0, 0, 0, 0.3);
 }
 
 .hamburger-icon {
@@ -952,7 +997,7 @@ body {
   display: block;
   height: 3px;
   width: 100%;
-  background: var(--text-primary);
+  background: #2d2d2d;
   border-radius: 2px;
   transition: all 0.3s;
 }
@@ -976,7 +1021,7 @@ body {
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
+  background: rgba(45, 45, 45, 0.6);
   z-index: 1001;
   animation: fadeIn 0.3s;
 }
@@ -995,17 +1040,18 @@ body {
 .menu-drawer {
   position: fixed;
   top: 0;
-  right: -350px;
-  width: 350px;
+  right: -380px;
+  width: 380px;
   max-width: 90vw;
   height: 100vh;
-  background: var(--bg-dark);
-  border-left: 2px solid var(--border-color);
+  background: white;
+  border-left: 4px solid #2d2d2d;
   z-index: 1002;
   transition: right 0.3s ease-in-out;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
+  box-shadow: -8px 0 16px rgba(0, 0, 0, 0.2);
 }
 
 .menu-drawer.open {
@@ -1017,22 +1063,26 @@ body {
   justify-content: space-between;
   align-items: center;
   padding: 1.5rem;
-  border-bottom: 2px solid var(--border-color);
-  background: var(--bg-card);
+  border-bottom: 3px solid #2d2d2d;
+  background: var(--landing-bg);
 }
 
 .menu-header h2 {
   font-size: 1.5rem;
+  font-weight: 900;
+  color: #2d2d2d;
+  text-shadow: 2px 2px 0px rgba(0, 0, 0, 0.1);
+  text-transform: uppercase;
   margin: 0;
 }
 
 .close-button {
-  width: 40px;
-  height: 40px;
-  background: none;
-  border: 2px solid var(--border-color);
-  border-radius: 0.5rem;
-  color: var(--text-primary);
+  width: 44px;
+  height: 44px;
+  background: white;
+  border: 3px solid #2d2d2d;
+  border-radius: 0.75rem;
+  color: #2d2d2d;
   font-size: 2rem;
   line-height: 1;
   cursor: pointer;
@@ -1041,24 +1091,43 @@ body {
   justify-content: center;
   transition: all 0.2s;
   padding: 0;
+  box-shadow: 2px 2px 0px rgba(0, 0, 0, 0.3);
+  font-weight: 400;
 }
 
 .close-button:hover {
-  border-color: var(--error-color);
-  color: var(--error-color);
-  background: rgba(239, 68, 68, 0.1);
+  border-color: #ff4444;
+  background: #fff5f5;
+  transform: translateY(-1px);
+  box-shadow: 3px 3px 0px rgba(0, 0, 0, 0.3);
+}
+
+.close-button:active {
+  transform: translateY(0px);
+  box-shadow: 1px 1px 0px rgba(0, 0, 0, 0.3);
 }
 
 .menu-content {
   flex: 1;
   padding: 1.5rem;
   overflow-y: auto;
+  background: var(--landing-bg);
 }
 
 .menu-content .gm-controls {
-  border: none;
-  padding: 0;
+  background: white;
+  border: 3px solid #ff4081;
+  box-shadow: 4px 4px 0px rgba(0, 0, 0, 0.3);
+  border-radius: 1rem;
+  padding: 1.5rem;
   margin: 0;
+}
+
+.menu-content .gm-controls h3 {
+  color: #2d2d2d;
+  font-weight: 800;
+  text-shadow: 1px 1px 0px rgba(255, 64, 129, 0.2);
+  margin-bottom: 1rem;
 }
 
 /* Responsive design */

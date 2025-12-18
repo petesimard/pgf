@@ -36,9 +36,9 @@ function TVView({ players, gameState }: TVViewProps) {
     );
   }
 
-  // Sort players by score
+  // Sort players by score (only show active players)
   const sortedPlayers = [...players]
-    .filter((p) => p.connected)
+    .filter((p) => p.connected && p.isActive)
     .sort((a, b) => (state.scores[b.id] || 0) - (state.scores[a.id] || 0));
 
   return (

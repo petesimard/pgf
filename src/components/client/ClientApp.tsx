@@ -89,6 +89,23 @@ function ClientApp() {
 
   // Show game view if game is in progress
   if (session.status === 'playing' && session.currentGameId) {
+    // If player is inactive, show waiting screen
+    if (!currentPlayer.isActive) {
+      return (
+        <div className="client-container">
+          <div className="client-header">
+            <h1>Game in Progress</h1>
+          </div>
+          <div className="waiting" style={{ marginTop: '2rem' }}>
+            <h2>Waiting for current game to finish</h2>
+            <p style={{ marginTop: '1rem', color: 'var(--text-secondary)' }}>
+              You'll be able to join the next game when this one ends.
+            </p>
+          </div>
+        </div>
+      );
+    }
+
     return (
       <ClientGameContainer
         session={session}

@@ -11,9 +11,9 @@ interface ClientLobbyProps {
 }
 
 function ClientLobby({ session, player, games, onSelectGame, onStartGame, error }: ClientLobbyProps) {
-  const connectedPlayers = session.players.filter((p) => p.connected).length;
+  const activePlayers = session.players.filter((p) => p.connected && p.isActive).length;
   const selectedGame = games.find((g) => g.id === session.currentGameId);
-  const canStart = selectedGame && connectedPlayers >= selectedGame.minPlayers;
+  const canStart = selectedGame && activePlayers >= selectedGame.minPlayers;
 
   return (
     <div className="client-container">
@@ -56,7 +56,7 @@ function ClientLobby({ session, player, games, onSelectGame, onStartGame, error 
             >
               {canStart
                 ? `Start ${selectedGame.name}`
-                : `Need ${selectedGame.minPlayers - connectedPlayers} more player(s)`}
+                : `Need ${selectedGame.minPlayers - activePlayers} more player(s)`}
             </button>
           )}
         </div>

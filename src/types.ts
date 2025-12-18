@@ -6,6 +6,7 @@ export interface Player {
   isGameMaster: boolean;
   connected: boolean;
   deviceId: string;
+  isActive: boolean; // false if player joined mid-game and is waiting in lobby
 }
 
 export interface GameSession {

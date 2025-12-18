@@ -145,6 +145,98 @@ test.describe('Multi-client Game Flow', () => {
     }
   });
 
+  test('should place late-joining player in waiting state during active game', async ({ browser }) => {
+    // Create separate contexts for TV and 3 phone clients
+    const tvContext = await browser.newContext();
+    const phone1Context = await browser.newContext({
+      userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15',
+      viewport: { width: 390, height: 844 },
+    });
+    const phone2Context = await browser.newContext({
+      userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15',
+      viewport: { width: 390, height: 844 },
+    });
+    const phone3Context = await browser.newContext({
+      userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15',
+      viewport: { width: 390, height: 844 },
+    });
+
+    const tvPage = await tvContext.newPage();
+    const phone1Page = await phone1Context.newPage();
+    const phone2Page = await phone2Context.newPage();
+    const phone3Page = await phone3Context.newPage();
+
+    try {
+      // Step 1: TV creates session
+      console.log('Step 1: Creating session...');
+      await tvPage.goto('http://localhost:5173/tv');
+      await tvPage.waitForSelector('.qr-code', { timeout: 10000 });
+      const sessionId = (await tvPage.locator('.session-code').textContent())?.trim();
+      console.log(`Session: ${sessionId}`);
+
+      // Step 2: Two players join
+      console.log('Step 2: Two players joining...');
+      await phone1Page.goto(`http://localhost:5173/join/${sessionId}`);
+      await phone1Page.evaluate(() => localStorage.removeItem('playerName'));
+      await phone1Page.reload();
+      await phone1Page.locator('input[type="text"]').fill('Alice');
+      await phone1Page.locator('button:has-text("Join Game")').click();
+      await phone1Page.waitForSelector('.gm-badge', { timeout: 10000 });
+
+      await phone2Page.goto(`http://localhost:5173/join/${sessionId}`);
+      await phone2Page.evaluate(() => localStorage.removeItem('playerName'));
+      await phone2Page.reload();
+      await phone2Page.locator('input[type="text"]').fill('Bob');
+      await phone2Page.locator('button:has-text("Join Game")').click();
+      await phone2Page.waitForSelector('.player-list', { timeout: 10000 });
+
+      // Step 3: Start the game
+      console.log('Step 3: Starting game...');
+      await phone1Page.locator('.game-option:has-text("Buzz Race")').click();
+      await phone1Page.waitForTimeout(500);
+      await phone1Page.locator('button:has-text("Start Buzz Race")').click();
+      await phone1Page.waitForSelector('.buzz-client', { timeout: 10000 });
+      console.log('Game started');
+
+      // Step 4: Third player tries to join mid-game
+      console.log('Step 4: Third player joining mid-game...');
+      await phone3Page.goto(`http://localhost:5173/join/${sessionId}`);
+      await phone3Page.evaluate(() => localStorage.removeItem('playerName'));
+      await phone3Page.reload();
+      await phone3Page.locator('input[type="text"]').fill('Charlie');
+      await phone3Page.locator('button:has-text("Join Game")').click();
+
+      // Step 5: Verify third player sees waiting message
+      console.log('Step 5: Verifying waiting state...');
+      await expect(phone3Page.locator('h1:has-text("Game in Progress")')).toBeVisible({ timeout: 10000 });
+      await expect(phone3Page.locator('h2:has-text("Waiting for current game to finish")')).toBeVisible();
+      console.log('✓ Third player in waiting state');
+
+      // Step 6: End the game via hamburger menu
+      console.log('Step 6: Ending game...');
+      await phone1Page.locator('.hamburger-button').click();
+      await phone1Page.waitForTimeout(500); // Wait for menu to open
+      await phone1Page.locator('button:has-text("End Game")').click();
+
+      // Step 7: Verify third player now sees lobby
+      console.log('Step 7: Verifying player activated after game ends...');
+      await expect(phone3Page.locator('.client-header h1:has-text("Lobby")')).toBeVisible({ timeout: 10000 });
+      console.log('✓ Third player moved to lobby after game ended');
+
+      console.log('✓ Mid-game join test passed!');
+
+    } finally {
+      await tvPage.close();
+      await phone1Page.close();
+      await phone2Page.close();
+      await phone3Page.close();
+      await tvContext.close();
+      await phone1Context.close();
+      await phone2Context.close();
+      await phone3Context.close();
+    }
+  });
+
   test('should auto-join with saved name', async ({ browser }) => {
     const tvContext = await browser.newContext();
     const phoneContext = await browser.newContext({

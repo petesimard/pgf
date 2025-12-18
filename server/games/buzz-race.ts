@@ -8,16 +8,18 @@ export interface BuzzRaceState {
 }
 
 function selectRandomPlayer(session: ServerGameSession): string | null {
-  const connectedPlayers = session.players.filter((p) => p.connected);
-  if (connectedPlayers.length === 0) return null;
-  const randomIndex = Math.floor(Math.random() * connectedPlayers.length);
-  return connectedPlayers[randomIndex].id;
+  const activePlayers = session.players.filter((p) => p.connected && p.isActive);
+  if (activePlayers.length === 0) return null;
+  const randomIndex = Math.floor(Math.random() * activePlayers.length);
+  return activePlayers[randomIndex].id;
 }
 
 function initializeScores(session: ServerGameSession): Record<string, number> {
   const scores: Record<string, number> = {};
   session.players.forEach((p) => {
-    scores[p.id] = 0;
+    if (p.isActive) {
+      scores[p.id] = 0;
+    }
   });
   return scores;
 }
@@ -75,8 +77,8 @@ export const buzzRaceGame: GameHandler = {
 
   onPlayerJoin(session, _io, player) {
     const state = session.gameState as BuzzRaceState;
-    if (state) {
-      // Initialize score for new player
+    if (state && player.isActive) {
+      // Initialize score for new player (only if active)
       state.scores[player.id] = 0;
     }
   },
