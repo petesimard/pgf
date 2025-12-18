@@ -55,6 +55,10 @@ export function useSocket(): UseSocketReturn {
       setGames(gamesList);
     });
 
+    socket.on('keepalive:ping', () => {
+      socket.emit('keepalive:pong');
+    });
+
     return () => {
       socket.disconnect();
     };

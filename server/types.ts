@@ -7,6 +7,7 @@ export type GameSocket = Socket<ClientToServerEvents, ServerToClientEvents>;
 export interface ServerGameSession extends GameSession {
   tvSocketId: string | null;
   playerSockets: Map<string, string>; // playerId -> socketId
+  playerLastPing: Map<string, number>; // playerId -> timestamp
   showQRCode: boolean;
 }
 

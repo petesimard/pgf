@@ -33,6 +33,7 @@ export interface ServerToClientEvents {
   'game:ended': () => void;
   'game:state': (state: unknown) => void;
   'games:list': (games: GameDefinition[]) => void;
+  'keepalive:ping': () => void;
 }
 
 export interface ClientToServerEvents {
@@ -44,4 +45,5 @@ export interface ClientToServerEvents {
   'game:end': () => void;
   'game:action': (action: { type: string; payload?: unknown }) => void;
   'qr:toggle': (show: boolean) => void;
+  'keepalive:pong': () => void;
 }
