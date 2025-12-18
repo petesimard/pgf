@@ -94,14 +94,14 @@ body {
 
 /* Player List */
 .player-list {
-  margin-top: 2rem;
+  margin-top: 1.5rem;
   width: 100%;
   max-width: 600px;
 }
 
 .player-list h2 {
-  font-size: 1.75rem;
-  margin-bottom: 1.5rem;
+  font-size: 1.5rem;
+  margin-bottom: 1rem;
   color: #2d2d2d;
   font-weight: 800;
   text-shadow: 2px 2px 0px rgba(0, 0, 0, 0.1);
@@ -110,20 +110,21 @@ body {
 .player-grid {
   display: flex;
   flex-wrap: wrap;
-  gap: 1rem;
+  gap: 0.75rem;
   justify-content: center;
 }
 
 .player-card {
   background: white;
-  padding: 1rem 1.5rem;
-  border-radius: 50px;
+  padding: 1.2rem 1rem 0.5rem 0.75rem;
+  border-radius: 1rem;
   display: flex;
   align-items: center;
-  gap: 0.75rem;
+  gap: 0.625rem;
   border: 3px solid #2d2d2d;
   box-shadow: 3px 3px 0px rgba(0, 0, 0, 0.3);
   transition: all 0.2s;
+  min-height: 54px;
 }
 
 .player-card:hover {
@@ -142,8 +143,8 @@ body {
 }
 
 .player-avatar {
-  width: 45px;
-  height: 45px;
+  width: 40px;
+  height: 40px;
   border-radius: 50%;
   background: var(--landing-btn);
   border: 2px solid #2d2d2d;
@@ -151,22 +152,24 @@ body {
   align-items: center;
   justify-content: center;
   font-weight: 800;
-  font-size: 1.25rem;
+  font-size: 1.15rem;
   color: #2d2d2d;
+  flex-shrink: 0;
 }
 
 .player-name {
   font-weight: 700;
-  font-size: 1.1rem;
+  font-size: 1rem;
   color: #2d2d2d;
+  flex: 1;
 }
 
 .gm-badge {
   background: #ff4081;
   color: white;
-  padding: 0.35rem 0.75rem;
-  border-radius: 50px;
-  font-size: 0.75rem;
+  padding: 0.25rem 0.65rem;
+  border-radius: 0.5rem;
+  font-size: 0.7rem;
   font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 0.05em;
@@ -186,8 +189,8 @@ body {
 
 .client-header {
   text-align: center;
-  padding: 1.5rem;
-  margin-bottom: 1.5rem;
+  padding: 1.25rem 1.5rem;
+  margin-bottom: 1.25rem;
   background: white;
   border-radius: 1rem;
   border: 3px solid #2d2d2d;
@@ -195,17 +198,18 @@ body {
 }
 
 .client-header h1 {
-  font-size: 2rem;
+  font-size: 1.75rem;
   font-weight: 900;
   color: #2d2d2d;
   text-shadow: 2px 2px 0px rgba(0, 0, 0, 0.1);
-  margin-bottom: 0.5rem;
+  margin-bottom: 0.25rem;
   text-transform: uppercase;
 }
 
 .client-header p {
   color: #5d5d5d;
   font-weight: 600;
+  margin: 0;
 }
 
 .join-form {
@@ -296,7 +300,8 @@ body {
 
 /* Game Selection */
 .game-selection {
-  margin-top: 1rem;
+  margin-top: 0;
+  margin-bottom: 1.5rem;
 }
 
 .game-selection h3 {
@@ -315,7 +320,7 @@ body {
 }
 
 .game-option {
-  padding: 1.25rem;
+  padding: 1rem 1.25rem;
   background: white;
   border: 3px solid #2d2d2d;
   border-radius: 1rem;
@@ -338,21 +343,23 @@ body {
 
 .game-option h3 {
   font-size: 1.25rem;
-  margin-bottom: 0.5rem;
+  margin-bottom: 0.35rem;
   color: #2d2d2d;
   font-weight: 800;
+  margin-top: 0;
 }
 
 .game-option p {
   font-size: 0.95rem;
   color: #5d5d5d;
   font-weight: 600;
+  margin: 0;
 }
 
 .game-option .player-req {
   font-size: 0.85rem;
   color: #7d7d7d;
-  margin-top: 0.5rem;
+  margin-top: 0.35rem;
   font-weight: 700;
 }
 
@@ -456,8 +463,15 @@ body {
 }
 
 @keyframes pulse {
-  0%, 100% { transform: scale(1); }
-  50% { transform: scale(1.05); }
+
+  0%,
+  100% {
+    transform: scale(1);
+  }
+
+  50% {
+    transform: scale(1.05);
+  }
 }
 
 .buzz-result {
@@ -484,9 +498,19 @@ body {
 }
 
 @keyframes fadeOut {
-  0% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
-  70% { opacity: 1; }
-  100% { opacity: 0; transform: translate(-50%, -50%) scale(0.8); }
+  0% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+
+  70% {
+    opacity: 1;
+  }
+
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.8);
+  }
 }
 
 /* Buzz Button (Client) */
@@ -603,7 +627,9 @@ body {
 }
 
 @keyframes spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 /* Error message */
@@ -674,11 +700,11 @@ body {
   border: 2px solid #2d2d2d;
 }
 
-.toggle-switch input:checked + .toggle-slider {
+.toggle-switch input:checked+.toggle-slider {
   background-color: var(--landing-btn);
 }
 
-.toggle-switch input:checked + .toggle-slider:before {
+.toggle-switch input:checked+.toggle-slider:before {
   transform: translateX(26px);
 }
 
@@ -774,9 +800,12 @@ body {
 }
 
 @keyframes float {
-  0%, 100% {
+
+  0%,
+  100% {
     transform: translateY(0px) rotate(-2deg);
   }
+
   50% {
     transform: translateY(-15px) rotate(2deg);
   }
@@ -953,8 +982,13 @@ body {
 }
 
 @keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
 }
 
 /* Menu Drawer */
