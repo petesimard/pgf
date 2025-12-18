@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import type { TVViewProps } from '../types';
+import ScoreBox from '../../components/shared/ScoreBox';
 
 interface BuzzRaceState {
   currentPlayerId: string | null;
@@ -36,25 +37,10 @@ function TVView({ players, gameState }: TVViewProps) {
     );
   }
 
-  // Sort players by score (only show active players)
-  const sortedPlayers = [...players]
-    .filter((p) => p.connected && p.isActive)
-    .sort((a, b) => (state.scores[b.id] || 0) - (state.scores[a.id] || 0));
-
   return (
     <div className="buzz-game-tv">
       {/* Scoreboard */}
-      <div className="scoreboard">
-        {sortedPlayers.map((player) => {
-          const score = state.scores[player.id] || 0;
-          return (
-            <div key={player.id} className={`score-item ${score < 0 ? 'negative' : ''}`}>
-              <span className="name">{player.name}</span>
-              <span className="score">{score}</span>
-            </div>
-          );
-        })}
-      </div>
+      <ScoreBox players={players} scores={state.scores} />
 
       {/* Current Player Display */}
       <div className="current-player-display">

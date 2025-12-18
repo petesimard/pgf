@@ -6,7 +6,7 @@
 
 :root {
   /* Primary colors - playful Phone Party theme */
-  --primary-color: #5dd9c1;
+  --primary-color: #24c2a2;
   --primary-hover: #4bc4ae;
   --accent-pink: #ff4081;
   --accent-pink-light: #ff6b9d;
@@ -34,7 +34,7 @@
 
   /* Legacy dark theme variables (for backward compatibility with Buzz Race) */
   --bg-dark: #0f172a;
-  --bg-card: #1e293b;
+  --bg-card: #fff5d9;
   --border-color: #334155;
 
   /* Convenience aliases */
@@ -456,8 +456,10 @@ body {
   align-items: center;
   gap: 0.5rem;
   padding: 0.5rem 1rem;
-  background: var(--bg-dark);
+  background: var(--card-bg);
   border-radius: 0.5rem;
+  border: 3px solid #2d2d2d;
+  box-shadow: 3px 3px 0px rgba(0, 0, 0, 0.3);
 }
 
 .score-item .name {

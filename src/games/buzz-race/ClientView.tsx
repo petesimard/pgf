@@ -1,3 +1,4 @@
+import ScoreBox from '@/components/shared/ScoreBox';
 import type { ClientViewProps } from '../types';
 
 interface BuzzRaceState {
@@ -47,10 +48,7 @@ function ClientView({ player, players, gameState, sendAction }: ClientViewProps)
       </div>
 
       {/* Your Score */}
-      <div className={`your-score ${myScore < 0 ? 'negative' : ''}`}>
-        <div className="label">Your Score</div>
-        <div className="value">{myScore}</div>
-      </div>
+      <ScoreBox players={players} scores={state.scores} />
     </div>
   );
 }
