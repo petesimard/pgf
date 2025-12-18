@@ -1,6 +1,7 @@
 import type { GameSession, Player } from '../../types';
 import { getGame } from '../../games';
 import GameMasterControls from './GameMasterControls';
+import HamburgerMenu from './HamburgerMenu';
 
 interface ClientGameContainerProps {
   session: GameSession & { showQRCode?: boolean };
@@ -25,13 +26,15 @@ function ClientGameContainer({ session, player, sendAction, endGame, toggleQR }:
 
   return (
     <div className="client-container">
-      {/* Game Master Controls */}
+      {/* Hamburger Menu with Game Master Controls */}
       {player.isGameMaster && (
-        <GameMasterControls
-          showQRCode={session.showQRCode ?? false}
-          onToggleQR={toggleQR}
-          onEndGame={endGame}
-        />
+        <HamburgerMenu>
+          <GameMasterControls
+            showQRCode={session.showQRCode ?? false}
+            onToggleQR={toggleQR}
+            onEndGame={endGame}
+          />
+        </HamburgerMenu>
       )}
 
       {/* Game-specific view */}
