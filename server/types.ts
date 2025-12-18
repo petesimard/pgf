@@ -8,6 +8,7 @@ export interface ServerGameSession extends GameSession {
   tvSocketId: string | null;
   playerSockets: Map<string, string>; // playerId -> socketId
   playerLastPing: Map<string, number>; // playerId -> timestamp
+  deviceToPlayer: Map<string, string>; // deviceId -> playerId
   showQRCode: boolean;
 }
 

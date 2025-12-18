@@ -70,6 +70,7 @@ function createSession(): ServerGameSession {
     tvSocketId: null,
     playerSockets: new Map(),
     playerLastPing: new Map(),
+    deviceToPlayer: new Map(),
     showQRCode: true,
   };
   sessions.set(sessionId, session);
@@ -104,7 +105,7 @@ function broadcastSessionState(session: ServerGameSession) {
 }
 
 // Remove a player from the session
-function removePlayer(session: ServerGameSession, playerId: string) {
+function removePlayer(session: ServerGameSession, playerId: string, reason = 'timeout') {
   const player = session.players.find((p) => p.id === playerId);
   if (!player) return;
 
@@ -115,7 +116,12 @@ function removePlayer(session: ServerGameSession, playerId: string) {
   session.playerSockets.delete(playerId);
   session.playerLastPing.delete(playerId);
 
-  console.log(`Player ${player.name} removed from session ${session.id} (timeout)`);
+  // Remove device mapping
+  if (player.deviceId) {
+    session.deviceToPlayer.delete(player.deviceId);
+  }
+
+  console.log(`Player ${player.name} removed from session ${session.id} (${reason})`);
 
   // If Game Master was removed, assign to the next player in the list
   if (wasGameMaster && session.players.length > 0) {
@@ -186,7 +192,7 @@ io.on('connection', (socket: GameSocket) => {
   });
 
   // Player joins session
-  socket.on('player:join', ({ sessionId, name }, callback) => {
+  socket.on('player:join', ({ sessionId, name, deviceId }, callback) => {
     const session = sessions.get(sessionId.toUpperCase());
     if (!session) {
       callback({ success: false, error: 'Session not found' });
@@ -199,6 +205,28 @@ io.on('connection', (socket: GameSocket) => {
       return;
     }
 
+    // Check for duplicate device connection
+    const existingPlayerId = session.deviceToPlayer.get(deviceId);
+    if (existingPlayerId) {
+      const existingPlayer = session.players.find((p) => p.id === existingPlayerId);
+      if (existingPlayer) {
+        console.log(`Duplicate connection detected for device ${deviceId}, removing old connection for ${existingPlayer.name}`);
+
+        // Disconnect the old socket
+        const oldSocketId = session.playerSockets.get(existingPlayerId);
+        if (oldSocketId) {
+          const oldSocketMapping = socketToSession.get(oldSocketId);
+          if (oldSocketMapping) {
+            socketToSession.delete(oldSocketId);
+          }
+          io.to(oldSocketId).disconnectSockets();
+        }
+
+        // Remove the old player
+        removePlayer(session, existingPlayerId, 'duplicate connection');
+      }
+    }
+
     const playerId = uuidv4();
     const isFirstPlayer = session.players.length === 0;
 
@@ -207,11 +235,13 @@ io.on('connection', (socket: GameSocket) => {
       name: name.trim().slice(0, 20),
       isGameMaster: isFirstPlayer,
       connected: true,
+      deviceId,
     };
 
     session.players.push(player);
     session.playerSockets.set(playerId, socket.id);
     session.playerLastPing.set(playerId, Date.now());
+    session.deviceToPlayer.set(deviceId, playerId);
     socketToSession.set(socket.id, { sessionId: session.id, playerId, isTV: false });
 
     console.log(`Player ${player.name} joined session ${session.id} (GM: ${isFirstPlayer})`);
