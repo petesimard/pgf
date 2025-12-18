@@ -4,6 +4,18 @@ import type { ServerToClientEvents, ClientToServerEvents, GameSession, GameDefin
 
 type GameSocket = Socket<ServerToClientEvents, ClientToServerEvents>;
 
+const DEVICE_ID_KEY = 'deviceId';
+
+// Get or create a unique device identifier
+function getDeviceId(): string {
+  let deviceId = localStorage.getItem(DEVICE_ID_KEY);
+  if (!deviceId) {
+    deviceId = `device-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`;
+    localStorage.setItem(DEVICE_ID_KEY, deviceId);
+  }
+  return deviceId;
+}
+
 interface UseSocketReturn {
   socket: GameSocket | null;
   connected: boolean;
@@ -55,6 +67,10 @@ export function useSocket(): UseSocketReturn {
       setGames(gamesList);
     });
 
+    socket.on('keepalive:ping', () => {
+      socket.emit('keepalive:pong');
+    });
+
     return () => {
       socket.disconnect();
     };
@@ -84,7 +100,8 @@ export function useSocket(): UseSocketReturn {
         return;
       }
 
-      socketRef.current.emit('player:join', { sessionId, name }, (response) => {
+      const deviceId = getDeviceId();
+      socketRef.current.emit('player:join', { sessionId, name, deviceId }, (response) => {
         if (response.success && response.playerId) {
           setPlayerId(response.playerId);
           resolve(response.playerId);

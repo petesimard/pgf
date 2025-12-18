@@ -5,6 +5,7 @@ export interface Player {
   name: string;
   isGameMaster: boolean;
   connected: boolean;
+  deviceId: string;
 }
 
 export interface GameSession {
@@ -33,10 +34,11 @@ export interface ServerToClientEvents {
   'game:ended': () => void;
   'game:state': (state: unknown) => void;
   'games:list': (games: GameDefinition[]) => void;
+  'keepalive:ping': () => void;
 }
 
 export interface ClientToServerEvents {
-  'player:join': (data: { sessionId: string; name: string }, callback: (response: { success: boolean; playerId?: string; error?: string }) => void) => void;
+  'player:join': (data: { sessionId: string; name: string; deviceId: string }, callback: (response: { success: boolean; playerId?: string; error?: string }) => void) => void;
   'session:create': (callback: (response: { success: boolean; sessionId?: string; error?: string }) => void) => void;
   'session:join': (sessionId: string, callback: (response: { success: boolean; error?: string }) => void) => void;
   'game:select': (gameId: string) => void;
@@ -44,4 +46,5 @@ export interface ClientToServerEvents {
   'game:end': () => void;
   'game:action': (action: { type: string; payload?: unknown }) => void;
   'qr:toggle': (show: boolean) => void;
+  'keepalive:pong': () => void;
 }

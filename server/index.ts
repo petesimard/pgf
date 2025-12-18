@@ -20,6 +20,10 @@ const HOSTNAME = process.env.HOSTNAME || getHostname();
 const CLIENT_PORT = process.env.NODE_ENV === 'production' ? PORT : 5173;
 const SERVER_URL = `http://${HOSTNAME}:${CLIENT_PORT}`;
 
+// Keepalive configuration
+const KEEPALIVE_INTERVAL = 10000; // Send ping every 10 seconds
+const KEEPALIVE_TIMEOUT = 30000; // Consider player dead after 30 seconds
+
 const app = express();
 const httpServer = createServer(app);
 
@@ -65,6 +69,8 @@ function createSession(): ServerGameSession {
     status: 'lobby',
     tvSocketId: null,
     playerSockets: new Map(),
+    playerLastPing: new Map(),
+    deviceToPlayer: new Map(),
     showQRCode: true,
   };
   sessions.set(sessionId, session);
@@ -95,6 +101,60 @@ function broadcastSessionState(session: ServerGameSession) {
   // Send to all players
   session.playerSockets.forEach((socketId) => {
     io.to(socketId).emit('session:state', clientSession);
+  });
+}
+
+// Remove a player from the session
+function removePlayer(session: ServerGameSession, playerId: string, reason = 'timeout') {
+  const player = session.players.find((p) => p.id === playerId);
+  if (!player) return;
+
+  const wasGameMaster = player.isGameMaster;
+
+  // Remove player from the session
+  session.players = session.players.filter((p) => p.id !== playerId);
+  session.playerSockets.delete(playerId);
+  session.playerLastPing.delete(playerId);
+
+  // Remove device mapping
+  if (player.deviceId) {
+    session.deviceToPlayer.delete(player.deviceId);
+  }
+
+  console.log(`Player ${player.name} removed from session ${session.id} (${reason})`);
+
+  // If Game Master was removed, assign to the next player in the list
+  if (wasGameMaster && session.players.length > 0) {
+    // Find the first connected player
+    const nextGM = session.players.find((p) => p.connected);
+    if (nextGM) {
+      nextGM.isGameMaster = true;
+      console.log(`New Game Master assigned: ${nextGM.name}`);
+    }
+  }
+
+  // Notify game
+  if (session.status === 'playing' && session.currentGameId) {
+    const game = games.get(session.currentGameId);
+    game?.onPlayerLeave?.(session, io, player);
+  }
+
+  broadcastSessionState(session);
+}
+
+// Check for timed out players
+function checkPlayerTimeouts(session: ServerGameSession) {
+  const now = Date.now();
+  const timedOutPlayers: string[] = [];
+
+  session.playerLastPing.forEach((lastPing, playerId) => {
+    if (now - lastPing > KEEPALIVE_TIMEOUT) {
+      timedOutPlayers.push(playerId);
+    }
+  });
+
+  timedOutPlayers.forEach((playerId) => {
+    removePlayer(session, playerId);
   });
 }
 
@@ -132,7 +192,7 @@ io.on('connection', (socket: GameSocket) => {
   });
 
   // Player joins session
-  socket.on('player:join', ({ sessionId, name }, callback) => {
+  socket.on('player:join', ({ sessionId, name, deviceId }, callback) => {
     const session = sessions.get(sessionId.toUpperCase());
     if (!session) {
       callback({ success: false, error: 'Session not found' });
@@ -145,6 +205,28 @@ io.on('connection', (socket: GameSocket) => {
       return;
     }
 
+    // Check for duplicate device connection
+    const existingPlayerId = session.deviceToPlayer.get(deviceId);
+    if (existingPlayerId) {
+      const existingPlayer = session.players.find((p) => p.id === existingPlayerId);
+      if (existingPlayer) {
+        console.log(`Duplicate connection detected for device ${deviceId}, removing old connection for ${existingPlayer.name}`);
+
+        // Disconnect the old socket
+        const oldSocketId = session.playerSockets.get(existingPlayerId);
+        if (oldSocketId) {
+          const oldSocketMapping = socketToSession.get(oldSocketId);
+          if (oldSocketMapping) {
+            socketToSession.delete(oldSocketId);
+          }
+          io.to(oldSocketId).disconnectSockets();
+        }
+
+        // Remove the old player
+        removePlayer(session, existingPlayerId, 'duplicate connection');
+      }
+    }
+
     const playerId = uuidv4();
     const isFirstPlayer = session.players.length === 0;
 
@@ -153,10 +235,13 @@ io.on('connection', (socket: GameSocket) => {
       name: name.trim().slice(0, 20),
       isGameMaster: isFirstPlayer,
       connected: true,
+      deviceId,
     };
 
     session.players.push(player);
     session.playerSockets.set(playerId, socket.id);
+    session.playerLastPing.set(playerId, Date.now());
+    session.deviceToPlayer.set(deviceId, playerId);
     socketToSession.set(socket.id, { sessionId: session.id, playerId, isTV: false });
 
     console.log(`Player ${player.name} joined session ${session.id} (GM: ${isFirstPlayer})`);
@@ -279,6 +364,18 @@ io.on('connection', (socket: GameSocket) => {
     broadcastSessionState(session);
   });
 
+  // Handle keepalive pong response
+  socket.on('keepalive:pong', () => {
+    const mapping = socketToSession.get(socket.id);
+    if (!mapping || mapping.isTV || !mapping.playerId) return;
+
+    const session = sessions.get(mapping.sessionId);
+    if (!session) return;
+
+    // Update last ping time
+    session.playerLastPing.set(mapping.playerId, Date.now());
+  });
+
   // Handle disconnection
   socket.on('disconnect', () => {
     const mapping = socketToSession.get(socket.id);
@@ -331,6 +428,19 @@ io.on('connection', (socket: GameSocket) => {
     }, 60000);
   });
 });
+
+// Keepalive system: send pings and check for timeouts
+setInterval(() => {
+  sessions.forEach((session) => {
+    // Send ping to all connected players
+    session.playerSockets.forEach((socketId, playerId) => {
+      io.to(socketId).emit('keepalive:ping');
+    });
+
+    // Check for timed out players
+    checkPlayerTimeouts(session);
+  });
+}, KEEPALIVE_INTERVAL);
 
 // API endpoint to get server URL
 app.get('/api/server-url', (_req, res) => {

@@ -26,7 +26,7 @@ function Lobby({ session }: LobbyProps) {
   return (
     <div className="tv-container">
       <div className="tv-header">
-        <h1>Party Games</h1>
+        <h1>Phone Party</h1>
       </div>
 
       <div className="qr-section">
