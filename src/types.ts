@@ -1,0 +1,47 @@
+// Shared types between client and server
+
+export interface Player {
+  id: string;
+  name: string;
+  isGameMaster: boolean;
+  connected: boolean;
+}
+
+export interface GameSession {
+  id: string;
+  players: Player[];
+  currentGameId: string | null;
+  gameState: unknown;
+  status: 'lobby' | 'playing';
+}
+
+export interface GameDefinition {
+  id: string;
+  name: string;
+  description: string;
+  minPlayers: number;
+  maxPlayers: number;
+}
+
+// Socket event types
+export interface ServerToClientEvents {
+  'session:state': (session: GameSession) => void;
+  'session:error': (error: string) => void;
+  'player:joined': (player: Player) => void;
+  'player:left': (playerId: string) => void;
+  'game:started': (gameId: string) => void;
+  'game:ended': () => void;
+  'game:state': (state: unknown) => void;
+  'games:list': (games: GameDefinition[]) => void;
+}
+
+export interface ClientToServerEvents {
+  'player:join': (data: { sessionId: string; name: string }, callback: (response: { success: boolean; playerId?: string; error?: string }) => void) => void;
+  'session:create': (callback: (response: { success: boolean; sessionId?: string; error?: string }) => void) => void;
+  'session:join': (sessionId: string, callback: (response: { success: boolean; error?: string }) => void) => void;
+  'game:select': (gameId: string) => void;
+  'game:start': () => void;
+  'game:end': () => void;
+  'game:action': (action: { type: string; payload?: unknown }) => void;
+  'qr:toggle': (show: boolean) => void;
+}
