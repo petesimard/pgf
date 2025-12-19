@@ -2,8 +2,10 @@ import { useEffect, useRef, useState } from 'react';
 import type { ClientViewProps } from '../types';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { Pencil, Eraser, Check } from 'lucide-react';
+import { Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { Editor, Erase, Color4 } from 'js-draw';
+import 'js-draw/Editor.css';
 
 interface AIDrawingState {
   word: string;
@@ -26,104 +28,48 @@ interface AIDrawingState {
   }> | null;
 }
 
-type Tool = 'pencil' | 'eraser';
-type BrushSize = 2 | 5 | 10 | 20;
-
 function ClientView({ player, gameState, sendAction }: ClientViewProps) {
   const state = gameState as AIDrawingState;
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [isDrawing, setIsDrawing] = useState(false);
-  const [tool, setTool] = useState<Tool>('pencil');
-  const [brushSize, setBrushSize] = useState<BrushSize>(5);
+  const editorRef = useRef<Editor | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   const [hasSubmitted, setHasSubmitted] = useState(false);
 
   const playerDrawing = state?.drawings[player.id];
 
   useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
+    const container = containerRef.current;
+    if (!container || editorRef.current) return;
 
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
+    // Create js-draw editor with white background
+    const editor = new Editor(container, {
+      wheelEventsEnabled: false,
+    });
 
-    // Set canvas size
-    canvas.width = 400;
-    canvas.height = 400;
+    // Set white background color
+    editor.dispatch(
+      editor.setBackgroundStyle({
+        color: Color4.white,
+        autoresize: true,
+      }),
+      false // Don't add to history
+    );
 
-    // Fill with white background
-    ctx.fillStyle = '#ffffff';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    editorRef.current = editor;
+
+    return () => {
+      if (editorRef.current) {
+        editorRef.current.remove();
+        editorRef.current = null;
+      }
+    };
   }, []);
 
-  const startDrawing = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
-    if (hasSubmitted || state?.phase !== 'drawing') return;
-
-    setIsDrawing(true);
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    const rect = canvas.getBoundingClientRect();
-    const scaleX = canvas.width / rect.width;
-    const scaleY = canvas.height / rect.height;
-
-    let x: number, y: number;
-
-    if ('touches' in e) {
-      x = (e.touches[0].clientX - rect.left) * scaleX;
-      y = (e.touches[0].clientY - rect.top) * scaleY;
-    } else {
-      x = (e.clientX - rect.left) * scaleX;
-      y = (e.clientY - rect.top) * scaleY;
-    }
-
-    ctx.beginPath();
-    ctx.moveTo(x, y);
-  };
-
-  const draw = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
-    if (!isDrawing || hasSubmitted || state?.phase !== 'drawing') return;
-
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    const rect = canvas.getBoundingClientRect();
-    const scaleX = canvas.width / rect.width;
-    const scaleY = canvas.height / rect.height;
-
-    let x: number, y: number;
-
-    if ('touches' in e) {
-      e.preventDefault();
-      x = (e.touches[0].clientX - rect.left) * scaleX;
-      y = (e.touches[0].clientY - rect.top) * scaleY;
-    } else {
-      x = (e.clientX - rect.left) * scaleX;
-      y = (e.clientY - rect.top) * scaleY;
-    }
-
-    ctx.lineTo(x, y);
-    ctx.strokeStyle = tool === 'pencil' ? '#000000' : '#ffffff';
-    ctx.lineWidth = brushSize;
-    ctx.lineCap = 'round';
-    ctx.lineJoin = 'round';
-    ctx.stroke();
-  };
-
-  const stopDrawing = () => {
-    setIsDrawing(false);
-  };
-
   const handleSubmit = () => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
+    const editor = editorRef.current;
+    if (!editor) return;
 
-    const imageData = canvas.toDataURL('image/png');
+    // Export as PNG
+    const imageData = editor.toDataURL();
     sendAction({
       type: 'submit-drawing',
       payload: { imageData },
@@ -132,14 +78,14 @@ function ClientView({ player, gameState, sendAction }: ClientViewProps) {
   };
 
   const handleClear = () => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
+    const editor = editorRef.current;
+    if (!editor) return;
 
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    ctx.fillStyle = '#ffffff';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    // Get all components and erase them
+    const allComponents = editor.image.getAllComponents();
+    if (allComponents.length > 0) {
+      editor.dispatch(new Erase(allComponents));
+    }
   };
 
   if (!state) {
@@ -240,20 +186,12 @@ function ClientView({ player, gameState, sendAction }: ClientViewProps) {
         </div>
       </Card>
 
-      {/* Canvas */}
+      {/* Drawing Canvas */}
       <div className="flex-1 flex items-center justify-center mb-4">
-        <div className="relative">
-          <canvas
-            ref={canvasRef}
-            className="border-4 border-border rounded-lg bg-white touch-none max-w-full h-auto"
-            onMouseDown={startDrawing}
-            onMouseMove={draw}
-            onMouseUp={stopDrawing}
-            onMouseLeave={stopDrawing}
-            onTouchStart={startDrawing}
-            onTouchMove={draw}
-            onTouchEnd={stopDrawing}
-            style={{ maxHeight: '50vh' }}
+        <div className="relative aspect-square w-full" style={{ maxHeight: '50vh', maxWidth: '50vh' }}>
+          <div
+            ref={containerRef}
+            className="border-4 border-border rounded-lg bg-white overflow-hidden w-full h-full"
           />
           {hasSubmitted && (
             <div className="absolute inset-0 bg-black/50 rounded-lg flex items-center justify-center">
@@ -266,57 +204,20 @@ function ClientView({ player, gameState, sendAction }: ClientViewProps) {
         </div>
       </div>
 
-      {/* Tools */}
+      {/* Action Buttons */}
       {!hasSubmitted && (
-        <div className="space-y-3">
-          {/* Tool Selection */}
-          <div className="flex gap-2">
-            <Button
-              variant={tool === 'pencil' ? 'default' : 'outline'}
-              onClick={() => setTool('pencil')}
-              className="flex-1 h-12"
-            >
-              <Pencil className="w-5 h-5 mr-2" />
-              Pencil
-            </Button>
-            <Button
-              variant={tool === 'eraser' ? 'default' : 'outline'}
-              onClick={() => setTool('eraser')}
-              className="flex-1 h-12"
-            >
-              <Eraser className="w-5 h-5 mr-2" />
-              Eraser
-            </Button>
-          </div>
-
-          {/* Size Selection */}
-          <div className="flex gap-2">
-            {([2, 5, 10, 20] as BrushSize[]).map((size) => (
-              <Button
-                key={size}
-                variant={brushSize === size ? 'default' : 'outline'}
-                onClick={() => setBrushSize(size)}
-                className="flex-1 h-10 text-sm"
-              >
-                {size}px
-              </Button>
-            ))}
-          </div>
-
-          {/* Action Buttons */}
-          <div className="flex gap-2">
-            <Button variant="outline" onClick={handleClear} className="flex-1 h-12">
-              Clear
-            </Button>
-            <Button
-              onClick={handleSubmit}
-              disabled={playerDrawing?.submitted}
-              className="flex-1 h-12 bg-success hover:bg-success/90"
-            >
-              <Check className="w-5 h-5 mr-2" />
-              Submit
-            </Button>
-          </div>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={handleClear} className="flex-1 h-12">
+            Clear
+          </Button>
+          <Button
+            onClick={handleSubmit}
+            disabled={playerDrawing?.submitted}
+            className="flex-1 h-12 bg-success hover:bg-success/90"
+          >
+            <Check className="w-5 h-5 mr-2" />
+            Submit
+          </Button>
         </div>
       )}
 

@@ -27,6 +27,7 @@
     "clsx": "^2.1.1",
     "dotenv": "^17.2.3",
     "express": "^4.18.2",
+    "js-draw": "^1.32.0",
     "lucide-react": "^0.562.0",
     "openai": "^6.15.0",
     "qrcode.react": "^3.1.0",
