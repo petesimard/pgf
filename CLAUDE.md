@@ -24,6 +24,8 @@ npm run test:debug    # Debug mode for tests
 
 ## Testing
 
+### Automated E2E Tests (Playwright)
+
 E2E tests use Playwright to simulate the full multi-device experience:
 
 - Tests automatically detect if dev servers are running on ports 3000/5173
@@ -39,6 +41,40 @@ E2E tests use Playwright to simulate the full multi-device experience:
 - Game selection: `.game-option` (not buttons)
 - Start button: `button:has-text("Start [Game Name]")` (includes game name)
 - Buzz Race game: `.buzz-game-tv` (TV), `.buzz-client` and `.buzz-button` (phone)
+
+### Interactive Testing with Claude Chrome Extension
+
+The Claude Chrome extension is an excellent tool for testing the multi-device experience during development. Claude can navigate to the TV view, open additional tabs for phone clients, and interact with the UI to verify functionality.
+
+**Setup**:
+1. User starts dev server: `npm run dev`
+2. User asks Claude to navigate to `http://localhost:5173/tv`
+3. Claude can then open additional tabs simulating phone clients joining the session
+4. Claude can interact with the UI, take screenshots, read console logs, and verify functionality
+
+**Capabilities**:
+- Navigate to TV and client views in separate tabs
+- Take screenshots to show current state
+- Click buttons and interact with game controls
+- Read console logs for debugging Socket.IO events
+- Monitor network requests and WebSocket connections
+- Verify DOM state and element visibility
+- Simulate multiple concurrent players in different tabs
+
+**Example workflow**:
+1. User: "Navigate to localhost:5173/tv"
+2. Claude: Takes screenshot showing QR code and session ID
+3. User: "Open a new tab and join as player 'Alice'"
+4. Claude: Opens new tab, joins session, shows both TV and client views
+5. User: "Select Buzz Race and start the game"
+6. Claude: Clicks game option, starts game, verifies game state
+
+**Benefits over physical device testing**:
+- No need for physical phones/tablets during development
+- Faster iteration: instant screenshots and feedback
+- Easy debugging: direct access to console logs and network tab
+- Multi-tab coordination: manage TV + multiple clients simultaneously
+- State verification: inspect DOM and game state in real-time
 
 ## Network Configuration
 
@@ -188,10 +224,17 @@ Three key type files define the contract:
 
 ### Testing Multi-Device Setup
 
+**With Physical Devices**:
 1. Start dev server: `npm run dev`
 2. Open TV view: `http://localhost:5173/tv`
 3. On phone (same network): Scan QR code or navigate to displayed URL
 4. First phone becomes Game Master and sees game selection controls
+
+**With Claude Chrome Extension** (recommended for development):
+1. Start dev server: `npm run dev`
+2. Ask Claude to navigate to `http://localhost:5173/tv`
+3. Ask Claude to open additional tabs to simulate phone clients
+4. Claude can interact with the UI, test flows, and provide visual feedback
 
 ### Debugging Socket Issues
 

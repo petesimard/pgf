@@ -5,31 +5,40 @@
 @layer base {
   :root {
     /* Shadcn color system - mapped to Phone Party theme */
-    --background: 35 70% 90%; /* Warm beige #f5e6c8 */
-    --foreground: 0 0% 18%; /* Dark text #2d2d2d */
+    --background: 35 70% 90%;
+    /* Warm beige #f5e6c8 */
+    --foreground: 0 0% 18%;
+    /* Dark text #2d2d2d */
 
-    --card: 42 100% 90%; /* Light peachy beige #ffecc5 */
+    --card: 42 100% 90%;
+    /* Light peachy beige #ffecc5 */
     --card-foreground: 0 0% 18%;
 
     --popover: 0 0% 100%;
     --popover-foreground: 0 0% 18%;
 
-    --primary: 170 68% 45%; /* Teal #24c2a2 */
+    --primary: 170 68% 45%;
+    /* Teal #24c2a2 */
     --primary-foreground: 0 0% 18%;
 
-    --secondary: 339 100% 63%; /* Pink #ff4081 */
+    --secondary: 339 100% 63%;
+    /* Pink #ff4081 */
     --secondary-foreground: 0 0% 100%;
 
-    --muted: 0 0% 49%; /* Medium gray #7d7d7d */
+    --muted: 0 0% 49%;
+    /* Medium gray #7d7d7d */
     --muted-foreground: 0 0% 36%;
 
-    --accent: 339 100% 63%; /* Pink accent */
+    --accent: 339 100% 63%;
+    /* Pink accent */
     --accent-foreground: 0 0% 100%;
 
-    --destructive: 0 100% 63%; /* Red #ff4444 */
+    --destructive: 0 100% 63%;
+    /* Red #ff4444 */
     --destructive-foreground: 0 0% 100%;
 
-    --success: 142 71% 45%; /* Green #22c55e */
+    --success: 142 71% 45%;
+    /* Green #22c55e */
     --success-foreground: 0 0% 100%;
 
     --border: 0 0% 18%;
@@ -64,6 +73,7 @@
 }
 
 @layer components {
+
   /* Custom utility classes for the playful Phone Party aesthetic */
   .shadow-playful {
     box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.3);
@@ -85,4 +95,8 @@
   .text-shadow-sm {
     text-shadow: 2px 2px 0px rgba(0, 0, 0, 0.1);
   }
+}
+
+.client-container {
+  height: 100vh;
 }

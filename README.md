@@ -47,6 +47,8 @@ Then:
 
 ## Testing
 
+### Automated E2E Tests (Playwright)
+
 The project includes automated E2E tests using Playwright that simulate the full multi-device experience:
 
 - **Automated Testing**: Tests automatically start dev servers, create sessions, and simulate multiple clients
@@ -64,6 +66,21 @@ npm run test:ui         # Interactive test UI
 **Tip**: If you already have `npm run dev` running, tests will use those servers and run faster (no startup/shutdown overhead).
 
 Tests are located in `tests/` directory and automatically manage server lifecycle.
+
+### Interactive Testing with Claude Chrome Extension
+
+For rapid development and visual feedback, use the Claude Chrome extension to simulate the multi-device experience:
+
+1. Start dev server: `npm run dev`
+2. Ask Claude to navigate to `http://localhost:5173/tv`
+3. Claude can open additional tabs to simulate phone clients
+4. Request Claude to interact with the UI, take screenshots, and verify game flows
+
+Benefits:
+- Real-time visual feedback during development
+- No need for physical devices or Playwright overhead
+- Interactive debugging with screenshots and console logs
+- Test multi-tab scenarios quickly
 
 ## Project Structure
 

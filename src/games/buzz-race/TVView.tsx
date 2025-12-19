@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import type { TVViewProps } from '../types';
-import ScoreBox from '../../components/shared/ScoreBox';
+import TVGameScene from '../../components/shared/GameScene';
 import { cn } from '@/lib/utils';
 
 interface BuzzRaceState {
@@ -39,12 +39,9 @@ function TVView({ players, gameState }: TVViewProps) {
   }
 
   return (
-    <div className="w-full h-screen flex flex-col">
-      {/* Scoreboard */}
-      <ScoreBox players={players} scores={state.scores} />
-
+    <TVGameScene players={players} scores={state.scores}>
       {/* Current Player Display */}
-      <div className="flex-1 flex flex-col items-center justify-center p-8">
+      <div className="flex flex-col items-center justify-center h-full p-8">
         <div className="text-3xl text-muted-foreground mb-4">BUZZ NOW!</div>
         <div className="text-9xl font-extrabold bg-gradient-to-r from-primary via-[#a855f7] to-[#ec4899] bg-clip-text text-transparent text-center animate-pulse">
           {currentPlayer?.name || '...'}
@@ -62,7 +59,7 @@ function TVView({ players, gameState }: TVViewProps) {
           {lastResult.playerName}: {lastResult.correct ? '+1' : '-1'}
         </div>
       )}
-    </div>
+    </TVGameScene>
   );
 }
 

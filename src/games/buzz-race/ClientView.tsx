@@ -1,4 +1,4 @@
-import ScoreBox from '@/components/shared/ScoreBox';
+import ClientGameScene from '@/components/shared/ClientGameScene';
 import type { ClientViewProps } from '../types';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -33,7 +33,7 @@ function ClientView({ player, players, gameState, sendAction }: ClientViewProps)
   };
 
   return (
-    <div className="flex-1 flex flex-col p-4">
+    <ClientGameScene players={players} scores={state.scores}>
       {/* Status */}
       <Card
         className={cn(
@@ -51,7 +51,7 @@ function ClientView({ player, players, gameState, sendAction }: ClientViewProps)
       </Card>
 
       {/* Buzz Button */}
-      <div className="flex-1 flex items-center justify-center p-8">
+      <div className="flex-1 flex items-center justify-center p-8 h-full">
         <Button
           onClick={handleBuzz}
           className="w-[200px] h-[200px] rounded-full border-0 bg-gradient-to-br from-destructive to-[#dc2626] text-white text-5xl font-extrabold shadow-[0_10px_30px_rgba(239,68,68,0.4)] hover:shadow-[0_15px_40px_rgba(239,68,68,0.5)] active:scale-95 transition-all uppercase"
@@ -59,10 +59,7 @@ function ClientView({ player, players, gameState, sendAction }: ClientViewProps)
           BUZZ!
         </Button>
       </div>
-
-      {/* Scoreboard */}
-      <ScoreBox players={players} scores={state.scores} />
-    </div>
+    </ClientGameScene>
   );
 }
 
