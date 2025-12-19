@@ -43,7 +43,7 @@ function Lobby({ session }: LobbyProps) {
           {session.id}
         </div>
         <div className="text-muted-foreground text-base mt-3 font-semibold">
-          Scan to join or visit: {joinUrl}
+          Scan to join or visit: <a href={joinUrl} className="text-primary hover:underline" target="_blank" rel="noopener noreferrer">{joinUrl}</a>
         </div>
       </Card>
 

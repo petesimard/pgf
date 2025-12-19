@@ -18,7 +18,9 @@ interface ClientLobbyProps {
 function ClientLobby({ session, player, games, onSelectGame, onStartGame, error }: ClientLobbyProps) {
   const activePlayers = session.players.filter((p) => p.connected && p.isActive).length;
   const selectedGame = games.find((g) => g.id === session.currentGameId);
-  const canStart = selectedGame && activePlayers >= selectedGame.minPlayers;
+  const isDev = import.meta.env.DEV;
+  const minPlayersRequired = isDev ? 1 : selectedGame?.minPlayers ?? 2;
+  const canStart = selectedGame && activePlayers >= minPlayersRequired;
 
   return (
     <div className="min-h-screen flex flex-col p-4 max-w-lg mx-auto bg-background">
@@ -83,7 +85,7 @@ function ClientLobby({ session, player, games, onSelectGame, onStartGame, error 
             >
               {canStart
                 ? `Start ${selectedGame.name}`
-                : `Need ${selectedGame.minPlayers - activePlayers} more player(s)`}
+                : `Need ${minPlayersRequired - activePlayers} more player(s)`}
             </Button>
           )}
         </div>

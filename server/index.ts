@@ -297,7 +297,7 @@ io.on('connection', (socket: GameSocket) => {
 
     // Check minimum players (only count active players)
     const activePlayers = session.players.filter((p) => p.connected && p.isActive).length;
-    if (activePlayers < game.minPlayers) {
+    if (activePlayers < game.minPlayers && process.env.NODE_ENV === 'production') {
       socket.emit('session:error', `Need at least ${game.minPlayers} players to start`);
       return;
     }
