@@ -28,14 +28,17 @@
     "dotenv": "^17.2.3",
     "express": "^4.18.2",
     "lucide-react": "^0.562.0",
+    "openai": "^6.15.0",
     "qrcode.react": "^3.1.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-router-dom": "^6.20.0",
+    "sharp": "^0.34.5",
     "socket.io": "^4.7.2",
     "socket.io-client": "^4.7.2",
     "tailwind-merge": "^3.4.0",
-    "uuid": "^9.0.1"
+    "uuid": "^9.0.1",
+    "zod": "^4.2.1"
   },
   "devDependencies": {
     "@playwright/test": "^1.57.0",

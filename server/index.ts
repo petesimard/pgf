@@ -9,6 +9,7 @@ import { hostname as getHostname } from 'os';
 import type { ServerToClientEvents, ClientToServerEvents, Player, GameDefinition } from '../src/types.js';
 import type { ServerGameSession, GameHandler, GameServer, GameSocket } from './types.js';
 import { buzzRaceGame } from './games/buzz-race.js';
+import { aiDrawingGame } from './games/ai-drawing.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -46,6 +47,7 @@ const games = new Map<string, GameHandler>();
 
 // Register games
 games.set(buzzRaceGame.id, buzzRaceGame);
+games.set(aiDrawingGame.id, aiDrawingGame);
 
 // Get available games list
 function getGamesList(): GameDefinition[] {
