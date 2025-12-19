@@ -16,6 +16,7 @@ npm run dev:server    # Server only
 npm run dev:client    # Client only (Vite)
 npm run build         # TypeScript compilation + Vite build
 npm start             # Production server
+npm run generate:game # Interactive CLI to generate new game files
 npm test              # Run E2E tests with Playwright (headless)
 npm run test:headed   # Run tests with visible browser
 npm run test:ui       # Interactive Playwright UI
@@ -179,6 +180,16 @@ Three key type files define the contract:
 ## Common Development Scenarios
 
 ### Adding a New Game
+
+**Quick Start**: Use the game generator to scaffold all necessary files:
+
+```bash
+npm run generate:game
+```
+
+This creates all the boilerplate files with TODOs marking where to add your game logic. See [scripts/README.md](scripts/README.md) for details.
+
+**Manual Setup** (if not using the generator):
 
 1. Create server handler in `server/games/your-game.ts`:
    ```typescript

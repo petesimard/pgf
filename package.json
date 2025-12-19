@@ -10,6 +10,7 @@
     "build": "tsc && vite build",
     "start": "node dist/server/index.js",
     "preview": "vite preview",
+    "generate:game": "tsx scripts/generate-game.ts",
     "test": "playwright test",
     "test:ui": "playwright test --ui",
     "test:headed": "playwright test --headed",
