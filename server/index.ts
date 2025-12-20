@@ -469,7 +469,7 @@ if (process.env.NODE_ENV === 'production') {
   });
 }
 
-httpServer.listen(PORT, '0.0.0.0', () => {
+httpServer.listen(PORT as number, '0.0.0.0', () => {
   console.log(`\n🎮 Party Game Server`);
   console.log(`   Local:   http://localhost:${PORT}`);
   console.log(`   Network: ${SERVER_URL}`);

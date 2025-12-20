@@ -218,6 +218,8 @@ Players: ${labelMap.map((m) => `${m.label}: ${m.playerName}`).join(', ')}`;
   const content = completion.choices[0].message.content;
   if (!content) throw new Error('No response from OpenAI');
 
+  console.log('OpenAI response:', content);
+
   const parsed = RankingSchema.parse(JSON.parse(content));
 
   // Convert to our result format
