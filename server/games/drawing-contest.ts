@@ -1,4 +1,5 @@
 import type { GameHandler, ServerGameSession, GameServer } from '../types.js';
+import { broadcastSessionState } from './utils.js';
 
 export interface DrawingContestState {
   // TODO: Define your game state here
@@ -42,7 +43,7 @@ export const drawingContestGame: GameHandler = {
     session.gameState = null;
   },
 
-  onAction(session, _io, playerId, action) {
+  onAction(session, io, playerId, action) {
     const state = session.gameState as DrawingContestState;
     if (!state) return;
 
@@ -51,6 +52,9 @@ export const drawingContestGame: GameHandler = {
     // if (action.type === 'your-action') {
     //   // Update state based on action
     //   session.gameState = state;
+    //
+    //   // Broadcast the updated state to all clients
+    //   broadcastSessionState(session, io);
     // }
 
     console.log(`Action received from player ${playerId}:`, action);

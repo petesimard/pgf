@@ -70,6 +70,7 @@ async function getGameConfig(): Promise<GameConfig> {
 
 function generateServerHandler(config: GameConfig): string {
   return `import type { GameHandler, ServerGameSession, GameServer } from '../types.js';
+import { broadcastSessionState } from './utils.js';
 
 export interface ${toPascalCase(config.id)}State {
   // TODO: Define your game state here
@@ -113,7 +114,7 @@ export const ${config.varName}: GameHandler = {
     session.gameState = null;
   },
 
-  onAction(session, _io, playerId, action) {
+  onAction(session, io, playerId, action) {
     const state = session.gameState as ${toPascalCase(config.id)}State;
     if (!state) return;
 
@@ -122,6 +123,9 @@ export const ${config.varName}: GameHandler = {
     // if (action.type === 'your-action') {
     //   // Update state based on action
     //   session.gameState = state;
+    //
+    //   // Broadcast the updated state to all clients
+    //   broadcastSessionState(session, io);
     // }
 
     console.log(\`Action received from player \${playerId}:\`, action);

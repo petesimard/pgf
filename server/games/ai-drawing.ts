@@ -1,4 +1,5 @@
 import type { GameHandler, ServerGameSession, GameServer } from '../types.js';
+import { broadcastSessionState } from './utils.js';
 import OpenAI from 'openai';
 import sharp from 'sharp';
 import { z } from 'zod';
@@ -279,12 +280,7 @@ export const aiDrawingGame: GameHandler = {
       }
 
       // Broadcast updated state
-      io.to(session.id).emit('session:state', {
-        id: session.id,
-        players: session.players,
-        currentGame: session.currentGame,
-        gameState: session.gameState,
-      });
+      broadcastSessionState(session, io);
     }, 1000);
   },
 
@@ -327,12 +323,7 @@ export const aiDrawingGame: GameHandler = {
       }
 
       // Broadcast updated state
-      io.to(session.id).emit('session:state', {
-        id: session.id,
-        players: session.players,
-        currentGame: session.currentGame,
-        gameState: session.gameState,
-      });
+      broadcastSessionState(session, io);
     }
   },
 
@@ -380,22 +371,12 @@ async function handleJudging(session: ServerGameSession, io: GameServer) {
     console.log('Judging complete!', state.results);
 
     // Broadcast results
-    io.to(session.id).emit('session:state', {
-      id: session.id,
-      players: session.players,
-      currentGame: session.currentGame,
-      gameState: session.gameState,
-    });
+    broadcastSessionState(session, io);
   } catch (error) {
     console.error('Error during judging:', error);
     state.phase = 'results';
     state.results = [];
 
-    io.to(session.id).emit('session:state', {
-      id: session.id,
-      players: session.players,
-      currentGame: session.currentGame,
-      gameState: session.gameState,
-    });
+    broadcastSessionState(session, io);
   }
 }
