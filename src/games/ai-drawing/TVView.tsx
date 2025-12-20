@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import type { TVViewProps } from '../types';
 import TVGameScene from '@/components/shared/GameScene';
 import { Card } from '@/components/ui/card';
@@ -26,6 +27,25 @@ interface AIDrawingState {
 
 function TVView({ players, gameState }: TVViewProps) {
   const state = gameState as AIDrawingState;
+  const [localTimeRemaining, setLocalTimeRemaining] = useState(state?.timeRemaining || 0);
+
+  // Sync local timer with server state
+  useEffect(() => {
+    if (state?.timeRemaining !== undefined) {
+      setLocalTimeRemaining(state.timeRemaining);
+    }
+  }, [state?.timeRemaining]);
+
+  // Client-side countdown
+  useEffect(() => {
+    if (state?.phase !== 'drawing') return;
+
+    const interval = setInterval(() => {
+      setLocalTimeRemaining((prev) => Math.max(0, prev - 1));
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [state?.phase]);
 
   if (!state) {
     return (
@@ -128,12 +148,12 @@ function TVView({ players, gameState }: TVViewProps) {
           <div
             className={cn(
               'text-9xl font-extrabold transition-colors',
-              state.timeRemaining <= 10
+              localTimeRemaining <= 10
                 ? 'text-destructive animate-pulse'
                 : 'text-success'
             )}
           >
-            {state.timeRemaining}s
+            {localTimeRemaining}s
           </div>
         </div>
 

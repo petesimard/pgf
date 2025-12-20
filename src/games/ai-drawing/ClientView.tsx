@@ -33,8 +33,27 @@ function ClientView({ player, gameState, sendAction }: ClientViewProps) {
   const editorRef = useRef<Editor | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [hasSubmitted, setHasSubmitted] = useState(false);
+  const [localTimeRemaining, setLocalTimeRemaining] = useState(state?.timeRemaining || 0);
 
   const playerDrawing = state?.drawings[player.id];
+
+  // Sync local timer with server state
+  useEffect(() => {
+    if (state?.timeRemaining !== undefined) {
+      setLocalTimeRemaining(state.timeRemaining);
+    }
+  }, [state?.timeRemaining]);
+
+  // Client-side countdown
+  useEffect(() => {
+    if (state?.phase !== 'drawing') return;
+
+    const interval = setInterval(() => {
+      setLocalTimeRemaining((prev) => Math.max(0, prev - 1));
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [state?.phase]);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -257,10 +276,10 @@ function ClientView({ player, gameState, sendAction }: ClientViewProps) {
             <div
               className={cn(
                 'text-3xl font-bold',
-                state.timeRemaining <= 10 ? 'text-destructive animate-pulse' : 'text-success'
+                localTimeRemaining <= 10 ? 'text-destructive animate-pulse' : 'text-success'
               )}
             >
-              {state.timeRemaining}s
+              {localTimeRemaining}s
             </div>
           </div>
         </div>
