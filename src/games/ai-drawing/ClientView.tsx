@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import type { ClientViewProps } from '../types';
+import Countdown from '@/components/shared/Countdown';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Check } from 'lucide-react';
@@ -257,17 +258,11 @@ function ClientView({ player, gameState, sendAction, isGameMaster, endGame }: Cl
             <div className="text-sm text-muted-foreground">Draw this:</div>
             <div className="text-3xl font-bold text-primary">{state.word}</div>
           </div>
-          <div className="text-right">
-            <div className="text-sm text-muted-foreground">Time Left</div>
-            <div
-              className={cn(
-                'text-3xl font-bold',
-                localTimeRemaining <= 10 ? 'text-destructive animate-pulse' : 'text-success'
-              )}
-            >
-              {localTimeRemaining}s
-            </div>
-          </div>
+          <Countdown
+            timeRemaining={localTimeRemaining}
+            label="Time Left"
+            size="sm"
+          />
         </div>
       </Card>
 

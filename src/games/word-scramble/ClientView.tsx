@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import ClientGameScene from '@/components/shared/ClientGameScene';
+import Countdown from '@/components/shared/Countdown';
 import type { ClientViewProps } from '../types';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -92,12 +93,7 @@ function ClientView({ player, players, gameState, sendAction, isGameMaster }: Cl
         <Card className="p-4 mb-4 bg-card">
           <div className="flex justify-between items-center mb-2">
             <div className="text-sm text-muted-foreground">Round {state.roundNumber}</div>
-            <div className={cn(
-              "text-2xl font-extrabold",
-              timeRemaining <= 10 ? "text-destructive animate-pulse" : "text-foreground"
-            )}>
-              {timeRemaining}s
-            </div>
+            <Countdown timeRemaining={timeRemaining} size="sm" />
           </div>
           <div className="text-center">
             <div className="text-sm text-muted-foreground mb-1">Letter:</div>

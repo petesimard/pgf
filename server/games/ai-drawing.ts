@@ -1,5 +1,5 @@
 import type { GameHandler, ServerGameSession, GameServer } from '../types.js';
-import { broadcastSessionState } from './utils.js';
+import { broadcastSessionState, CountdownTimer } from './utils.js';
 import OpenAI from 'openai';
 import sharp from 'sharp';
 import { z } from 'zod';
@@ -257,7 +257,7 @@ Players: ${labelMap.map((m) => `${m.label}: ${m.playerName}`).join(', ')}`;
   });
 }
 
-let timerInterval: NodeJS.Timeout | null = null;
+let countdown: CountdownTimer | null = null;
 let resultRevealInterval: NodeJS.Timeout | null = null;
 
 // Store full drawings (with imageData) separately from session state
@@ -291,23 +291,22 @@ export const aiDrawingGame: GameHandler = {
     console.log(`AI Drawing game started! Word: ${state.word}`);
 
     // Start countdown timer
-    timerInterval = setInterval(() => {
-      const currentState = session.gameState as AIDrawingState;
-      if (currentState.phase !== 'drawing') {
-        if (timerInterval) clearInterval(timerInterval);
-        return;
-      }
-
-      currentState.timeRemaining--;
-
-      if (currentState.timeRemaining <= 0) {
+    countdown = new CountdownTimer({
+      duration: DRAWING_TIME,
+      onTick: (timeRemaining) => {
+        const currentState = session.gameState as AIDrawingState;
+        if (currentState.phase !== 'drawing') {
+          countdown?.stop();
+          return;
+        }
+        currentState.timeRemaining = timeRemaining;
+        broadcastSessionState(session, io);
+      },
+      onComplete: () => {
+        const currentState = session.gameState as AIDrawingState;
         // Time's up! Auto-submit all unsubmitted drawings
         console.log('Time is up! Auto-submitting drawings...');
         currentState.phase = 'judging';
-        if (timerInterval) {
-          clearInterval(timerInterval);
-          timerInterval = null;
-        }
 
         // Broadcast judging phase immediately
         broadcastSessionState(session, io);
@@ -316,19 +315,16 @@ export const aiDrawingGame: GameHandler = {
         handleJudging(session, io).catch((error) => {
           console.error('Unhandled error in handleJudging (timer):', error);
         });
-        return; // Don't broadcast again at the end
-      }
-
-      // Broadcast updated state (only during drawing phase)
-      broadcastSessionState(session, io);
-    }, 1000);
+      },
+    });
+    countdown.start();
   },
 
   onEnd(session, _io) {
     console.log('AI Drawing game ended');
-    if (timerInterval) {
-      clearInterval(timerInterval);
-      timerInterval = null;
+    if (countdown) {
+      countdown.stop();
+      countdown = null;
     }
     if (resultRevealInterval) {
       clearInterval(resultRevealInterval);
@@ -364,9 +360,9 @@ export const aiDrawingGame: GameHandler = {
       if (allSubmitted && state.phase === 'drawing') {
         console.log('All players submitted! Starting judging...');
         state.phase = 'judging';
-        if (timerInterval) {
-          clearInterval(timerInterval);
-          timerInterval = null;
+        if (countdown) {
+          countdown.stop();
+          countdown = null;
         }
 
         // Trigger judging

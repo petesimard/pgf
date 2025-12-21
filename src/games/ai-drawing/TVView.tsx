@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import type { TVViewProps } from '../types';
 import TVGameScene from '@/components/shared/GameScene';
+import Countdown from '@/components/shared/Countdown';
 import { Card } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 
@@ -223,19 +224,12 @@ function TVView({ players, gameState, socket }: TVViewProps) {
         </div>
 
         {/* Timer */}
-        <div className="text-center mb-8">
-          <div className="text-4xl text-muted-foreground mb-2">Time Remaining</div>
-          <div
-            className={cn(
-              'text-9xl font-extrabold transition-colors',
-              localTimeRemaining <= 10
-                ? 'text-destructive animate-pulse'
-                : 'text-success'
-            )}
-          >
-            {localTimeRemaining}s
-          </div>
-        </div>
+        <Countdown
+          timeRemaining={localTimeRemaining}
+          label="Time Remaining"
+          size="xl"
+          className="mb-8"
+        />
 
         {/* Progress */}
         <Card className="p-8 bg-card/80 rounded-2xl min-w-[500px]">

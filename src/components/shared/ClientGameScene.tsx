@@ -5,20 +5,23 @@ interface ClientGameSceneProps {
   players: Player[];
   scores: Record<string, number>;
   children: React.ReactNode;
+  showScorebox?: boolean;
 }
 
-function ClientGameScene({ players, scores, children }: ClientGameSceneProps) {
+function ClientGameScene({ players, scores, children, showScorebox = false }: ClientGameSceneProps) {
   return (
     <div className="h-full flex flex-col p-4">
       {/* Game Content - takes all available space except scorebox */}
       <div className="flex-1 min-h-0">
-        {children}client-container
+        {children}
       </div>
 
       {/* ScoreBox - fixed at bottom */}
-      <div className="flex-shrink-0">
-        <ScoreBox players={players} scores={scores} />
-      </div>
+      {showScorebox && (
+        <div className="flex-shrink-0">
+          <ScoreBox players={players} scores={scores} />
+        </div>
+      )}
     </div>
   );
 }

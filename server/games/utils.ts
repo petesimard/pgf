@@ -8,6 +8,111 @@
 import type { ServerGameSession, GameServer } from '../types.js';
 
 /**
+ * Configuration options for the countdown timer.
+ */
+export interface CountdownConfig {
+  /** Initial time in seconds */
+  duration: number;
+  /** Callback fired every tick (1 second) with remaining time */
+  onTick: (timeRemaining: number) => void;
+  /** Callback fired when countdown reaches 0 */
+  onComplete: () => void;
+  /** Optional callback fired when countdown is manually stopped */
+  onStop?: () => void;
+}
+
+/**
+ * A countdown timer manager that can be started, stopped, and paused.
+ * Used by games to manage round timers consistently.
+ *
+ * @example
+ * ```typescript
+ * const countdown = new CountdownTimer({
+ *   duration: 60,
+ *   onTick: (remaining) => {
+ *     state.timeRemaining = remaining;
+ *     broadcastSessionState(session, io);
+ *   },
+ *   onComplete: () => {
+ *     state.phase = 'complete';
+ *     broadcastSessionState(session, io);
+ *   }
+ * });
+ *
+ * countdown.start();
+ *
+ * // Later...
+ * countdown.stop();
+ * ```
+ */
+export class CountdownTimer {
+  private interval: NodeJS.Timeout | null = null;
+  private timeRemaining: number;
+  private config: CountdownConfig;
+  private isRunning: boolean = false;
+
+  constructor(config: CountdownConfig) {
+    this.config = config;
+    this.timeRemaining = config.duration;
+  }
+
+  /**
+   * Start or resume the countdown
+   */
+  start(): void {
+    if (this.isRunning) return;
+
+    this.isRunning = true;
+    this.interval = setInterval(() => {
+      this.timeRemaining--;
+
+      // Fire tick callback
+      this.config.onTick(this.timeRemaining);
+
+      // Check if complete
+      if (this.timeRemaining <= 0) {
+        this.stop();
+        this.config.onComplete();
+      }
+    }, 1000);
+  }
+
+  /**
+   * Stop the countdown and clear the interval
+   */
+  stop(): void {
+    if (this.interval) {
+      clearInterval(this.interval);
+      this.interval = null;
+    }
+    this.isRunning = false;
+    this.config.onStop?.();
+  }
+
+  /**
+   * Reset the countdown to initial duration without starting
+   */
+  reset(): void {
+    this.stop();
+    this.timeRemaining = this.config.duration;
+  }
+
+  /**
+   * Get the current time remaining
+   */
+  getTimeRemaining(): number {
+    return this.timeRemaining;
+  }
+
+  /**
+   * Check if the countdown is currently running
+   */
+  getIsRunning(): boolean {
+    return this.isRunning;
+  }
+}
+
+/**
  * Helper function to broadcast session state consistently from within game handlers.
  * Ensures all required fields are included to match GameSession interface.
  *
