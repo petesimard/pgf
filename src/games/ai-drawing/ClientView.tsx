@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { Editor, Erase, Color4, PenTool, PanZoomTool } from 'js-draw';
+import { Editor, Erase, Color4, SelectionTool, PanZoomTool, InsertImageWidget } from 'js-draw';
 import 'js-draw/Editor.css';
 
 interface AIDrawingState {
@@ -62,9 +62,6 @@ function ClientView({ player, gameState, sendAction }: ClientViewProps) {
     // Create js-draw editor with white background
     const editor = new Editor(container, {
       wheelEventsEnabled: false,
-      pens: {
-        filterPenTypes: (penType) => penType.id === 'pencil-pen',
-      }
     });
 
     // Set white background color
@@ -76,8 +73,12 @@ function ClientView({ player, gameState, sendAction }: ClientViewProps) {
       false // Don't add to history
     );
 
-    // Add toolbar with custom controls
-    const toolbar = editor.addToolbar();
+    // Remove page and pan tools
+    const toolController = editor.toolController;
+    const toolbar = editor.addToolbar(false);
+    toolbar.addDefaultActionButtons();
+    toolbar.addWidgetsForPrimaryTools();
+
 
     editor.getRootElement().style.height = '500px';
     editor.getRootElement().style.width = '500px';
