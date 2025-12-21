@@ -4,7 +4,7 @@ import Lobby from './Lobby';
 import GameContainer from './GameContainer';
 
 function TVApp() {
-  const { connected, session, createSession } = useSocket();
+  const { connected, session, createSession, socket } = useSocket();
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -47,7 +47,7 @@ function TVApp() {
   }
 
   if (session.status === 'playing' && session.currentGameId) {
-    return <GameContainer session={session} />;
+    return <GameContainer session={session} socket={socket} />;
   }
 
   return <Lobby session={session} />;

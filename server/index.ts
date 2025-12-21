@@ -169,6 +169,9 @@ io.on('connection', (socket: GameSocket) => {
     session.tvSocketId = socket.id;
     socketToSession.set(socket.id, { sessionId: session.id, isTV: true });
 
+    // Join the socket.io room for this session
+    socket.join(session.id);
+
     console.log(`Session created: ${session.id}`);
     callback({ success: true, sessionId: session.id });
 
@@ -187,6 +190,9 @@ io.on('connection', (socket: GameSocket) => {
 
     session.tvSocketId = socket.id;
     socketToSession.set(socket.id, { sessionId, isTV: true });
+
+    // Join the socket.io room for this session
+    socket.join(sessionId);
 
     callback({ success: true });
     socket.emit('session:state', getClientSession(session));
@@ -245,6 +251,9 @@ io.on('connection', (socket: GameSocket) => {
     session.playerLastPing.set(playerId, Date.now());
     session.deviceToPlayer.set(deviceId, playerId);
     socketToSession.set(socket.id, { sessionId: session.id, playerId, isTV: false });
+
+    // Join the socket.io room for this session
+    socket.join(session.id);
 
     console.log(`Player ${player.name} joined session ${session.id} (GM: ${isFirstPlayer}, Active: ${isActive})`);
 

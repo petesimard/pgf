@@ -3,6 +3,7 @@ import { broadcastSessionState } from './utils.js';
 import OpenAI from 'openai';
 import sharp from 'sharp';
 import { z } from 'zod';
+import fs from 'fs';
 
 export interface PlayerDrawing {
   playerId: string;
@@ -101,9 +102,16 @@ async function createCollage(drawings: PlayerDrawing[]): Promise<Buffer> {
     const base64Data = drawings[i].imageData.replace(/^data:image\/png;base64,/, '');
     const imageBuffer = Buffer.from(base64Data, 'base64');
 
-    // Resize drawing to fit
+    // Resize drawing to fit (leaving room for 1px border on each side)
     const resizedImage = await sharp(imageBuffer)
-      .resize(CANVAS_SIZE, CANVAS_SIZE, { fit: 'contain', background: { r: 255, g: 255, b: 255, alpha: 1 } })
+      .resize(CANVAS_SIZE - 2, CANVAS_SIZE - 2, { fit: 'contain', background: { r: 255, g: 255, b: 255, alpha: 1 } })
+      .extend({
+        top: 1,
+        bottom: 1,
+        left: 1,
+        right: 1,
+        background: { r: 0, g: 0, b: 0, alpha: 1 },
+      })
       .toBuffer();
 
     composites.push({
@@ -131,17 +139,28 @@ async function createCollage(drawings: PlayerDrawing[]): Promise<Buffer> {
     });
   }
 
-  return canvas.composite(composites).png().toBuffer();
+  const pngBuffer = await canvas.composite(composites).png().toBuffer();
+
+  // Save to file for debugging
+  fs.writeFileSync('collage.png', pngBuffer);
+
+  return pngBuffer;
 }
 
 async function judgeDrawings(word: string, drawings: PlayerDrawing[]): Promise<JudgingResult[]> {
+  console.log('=== judgeDrawings called ===');
+  console.log('API Key present:', !!process.env.OPENAI_API_KEY);
+
   const openai = new OpenAI({
     apiKey: process.env.OPENAI_API_KEY,
   });
 
+  console.log('Creating collage...');
   // Create collage
   const collageBuffer = await createCollage(drawings);
+  console.log('Collage created, size:', collageBuffer.length, 'bytes');
   const collageBase64 = collageBuffer.toString('base64');
+  console.log('Collage converted to base64, length:', collageBase64.length);
 
   // Create mapping of labels to players
   const labelMap = drawings.map((d, i) => ({
@@ -171,6 +190,7 @@ Players: ${labelMap.map((m) => `${m.label}: ${m.playerName}`).join(', ')}`;
     ),
   });
 
+  console.log('Calling OpenAI API...');
   const completion = await openai.chat.completions.create({
     model: 'gpt-4o-mini',
     messages: [
@@ -216,6 +236,7 @@ Players: ${labelMap.map((m) => `${m.label}: ${m.playerName}`).join(', ')}`;
     },
   });
 
+  console.log('OpenAI API call completed');
   const content = completion.choices[0].message.content;
   if (!content) throw new Error('No response from OpenAI');
 
@@ -237,6 +258,10 @@ Players: ${labelMap.map((m) => `${m.label}: ${m.playerName}`).join(', ')}`;
 
 let timerInterval: NodeJS.Timeout | null = null;
 
+// Store full drawings (with imageData) separately from session state
+// Key: sessionId, Value: Record<playerId, PlayerDrawing>
+const drawingsStorage = new Map<string, Record<string, PlayerDrawing>>();
+
 export const aiDrawingGame: GameHandler = {
   id: 'ai-drawing',
   name: 'AI Drawing Contest',
@@ -245,15 +270,20 @@ export const aiDrawingGame: GameHandler = {
   maxPlayers: 8,
 
   onStart(session, io) {
+    const drawings = initializeDrawings(session);
+
     const state: AIDrawingState = {
       word: selectRandomWord(),
       timeRemaining: DRAWING_TIME,
-      drawings: initializeDrawings(session),
+      drawings,
       phase: 'drawing',
       results: null,
       collageUrl: null,
     };
     session.gameState = state;
+
+    // Store full drawings separately (including imageData)
+    drawingsStorage.set(session.id, drawings);
 
     console.log(`AI Drawing game started! Word: ${state.word}`);
 
@@ -271,15 +301,22 @@ export const aiDrawingGame: GameHandler = {
         // Time's up! Auto-submit all unsubmitted drawings
         console.log('Time is up! Auto-submitting drawings...');
         currentState.phase = 'judging';
-        if (timerInterval) clearInterval(timerInterval);
+        if (timerInterval) {
+          clearInterval(timerInterval);
+          timerInterval = null;
+        }
 
-        // Trigger judging
-        setTimeout(async () => {
-          await handleJudging(session, io);
-        }, 0);
+        // Broadcast judging phase immediately
+        broadcastSessionState(session, io);
+
+        // Trigger judging (don't broadcast here, handleJudging will do it)
+        handleJudging(session, io).catch((error) => {
+          console.error('Unhandled error in handleJudging (timer):', error);
+        });
+        return; // Don't broadcast again at the end
       }
 
-      // Broadcast updated state
+      // Broadcast updated state (only during drawing phase)
       broadcastSessionState(session, io);
     }, 1000);
   },
@@ -290,6 +327,8 @@ export const aiDrawingGame: GameHandler = {
       clearInterval(timerInterval);
       timerInterval = null;
     }
+    // Clean up drawings storage
+    drawingsStorage.delete(session.id);
     session.gameState = null;
   },
 
@@ -301,7 +340,14 @@ export const aiDrawingGame: GameHandler = {
       const payload = action.payload as { imageData: string };
       if (!state.drawings[playerId]) return;
 
-      state.drawings[playerId].imageData = payload.imageData;
+      // Store imageData in separate storage
+      const storage = drawingsStorage.get(session.id);
+      if (storage && storage[playerId]) {
+        storage[playerId].imageData = payload.imageData;
+        storage[playerId].submitted = true;
+      }
+
+      // Update session state (without imageData)
       state.drawings[playerId].submitted = true;
 
       console.log(`Player ${playerId} submitted their drawing`);
@@ -317,9 +363,9 @@ export const aiDrawingGame: GameHandler = {
         }
 
         // Trigger judging
-        setTimeout(async () => {
-          await handleJudging(session, io);
-        }, 0);
+        handleJudging(session, io).catch((error) => {
+          console.error('Unhandled error in handleJudging (all submitted):', error);
+        });
       }
 
       // Broadcast updated state
@@ -330,13 +376,21 @@ export const aiDrawingGame: GameHandler = {
   onPlayerJoin(session, io, player) {
     const state = session.gameState as AIDrawingState;
     if (state && state.phase === 'drawing' && player.isActive) {
-      // Add drawing slot for new player
-      state.drawings[player.id] = {
+      const newDrawing = {
         playerId: player.id,
         playerName: player.name,
         imageData: '',
         submitted: false,
       };
+
+      // Add drawing slot to session state
+      state.drawings[player.id] = newDrawing;
+
+      // Add to storage as well
+      const storage = drawingsStorage.get(session.id);
+      if (storage) {
+        storage[player.id] = newDrawing;
+      }
     }
   },
 
@@ -346,34 +400,74 @@ export const aiDrawingGame: GameHandler = {
 };
 
 async function handleJudging(session: ServerGameSession, io: GameServer) {
+  console.log('=== handleJudging called ===');
   const state = session.gameState as AIDrawingState;
-  if (!state) return;
+  if (!state) {
+    console.log('No state found in handleJudging');
+    return;
+  }
+
+  console.log('Current phase:', state.phase);
 
   try {
-    // Get all submitted drawings
-    const submittedDrawings = Object.values(state.drawings).filter(
+    // Get all submitted drawings from storage (includes imageData)
+    const storage = drawingsStorage.get(session.id);
+    if (!storage) {
+      console.log('No drawings storage found');
+      state.phase = 'results';
+      state.results = [];
+      broadcastSessionState(session, io);
+      return;
+    }
+
+    const submittedDrawings = Object.values(storage).filter(
       (d) => d.submitted && d.imageData
     );
+
+    console.log(`Found ${submittedDrawings.length} submitted drawings`);
 
     if (submittedDrawings.length === 0) {
       console.log('No drawings to judge');
       state.phase = 'results';
       state.results = [];
+      broadcastSessionState(session, io);
       return;
     }
 
     console.log(`Judging ${submittedDrawings.length} drawings...`);
     const results = await judgeDrawings(state.word, submittedDrawings);
 
+    console.log('Got results from judgeDrawings:', results);
+
     state.results = results.sort((a, b) => a.rank - b.rank);
     state.phase = 'results';
 
-    console.log('Judging complete!', state.results);
+    console.log('Judging complete! Phase:', state.phase, 'Results:', state.results);
 
-    // Broadcast results
+    // Verify the session state is updated
+    console.log('Session gameState phase:', (session.gameState as AIDrawingState).phase);
+    console.log('Session gameState results:', (session.gameState as AIDrawingState).results);
+
+    // Broadcast results to all clients
     broadcastSessionState(session, io);
+    console.log('Broadcast complete');
+
+    // Send individual drawing images to TV socket only
+    if (session.tvSocketId) {
+      console.log('Sending individual drawing images to TV socket:', session.tvSocketId);
+      submittedDrawings.forEach((drawing) => {
+        io.to(session.tvSocketId!).emit('drawing:image', {
+          playerId: drawing.playerId,
+          imageData: drawing.imageData,
+        });
+      });
+      console.log(`Sent ${submittedDrawings.length} drawing images to TV`);
+    }
   } catch (error) {
-    console.error('Error during judging:', error);
+    console.error('!!! Error during judging:', error);
+    if (error instanceof Error) {
+      console.error('Error stack:', error.stack);
+    }
     state.phase = 'results';
     state.results = [];
 

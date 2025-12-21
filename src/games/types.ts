@@ -1,10 +1,12 @@
 import type { ComponentType } from 'react';
-import type { Player, GameSession } from '../types';
+import type { Player, GameSession, ServerToClientEvents, ClientToServerEvents } from '../types';
+import type { Socket } from 'socket.io-client';
 
 export interface TVViewProps {
   session: GameSession;
   players: Player[];
   gameState: unknown;
+  socket?: Socket<ServerToClientEvents, ClientToServerEvents> | null;
 }
 
 export interface ClientViewProps {

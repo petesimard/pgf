@@ -12,7 +12,7 @@ interface AIDrawingState {
     {
       playerId: string;
       playerName: string;
-      imageData: string;
+      imageData?: string; // Optional - not sent to clients
       submitted: boolean;
     }
   >;
@@ -25,9 +25,45 @@ interface AIDrawingState {
   }> | null;
 }
 
-function TVView({ players, gameState }: TVViewProps) {
+function TVView({ players, gameState, socket }: TVViewProps) {
   const state = gameState as AIDrawingState;
   const [localTimeRemaining, setLocalTimeRemaining] = useState(state?.timeRemaining || 0);
+  const [drawingImages, setDrawingImages] = useState<Record<string, string>>({});
+
+  // Debug logging
+  useEffect(() => {
+    console.log('[TVView] State update:', {
+      phase: state?.phase,
+      hasResults: !!state?.results,
+      resultsLength: state?.results?.length,
+    });
+  }, [state?.phase, state?.results]);
+
+  // Listen for individual drawing images
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleDrawingImage = (data: { playerId: string; imageData: string }) => {
+      console.log('[TVView] Received drawing image for player:', data.playerId);
+      setDrawingImages((prev) => ({
+        ...prev,
+        [data.playerId]: data.imageData,
+      }));
+    };
+
+    socket.on('drawing:image', handleDrawingImage);
+
+    return () => {
+      socket.off('drawing:image', handleDrawingImage);
+    };
+  }, [socket]);
+
+  // Clear images when game restarts
+  useEffect(() => {
+    if (state?.phase === 'drawing') {
+      setDrawingImages({});
+    }
+  }, [state?.phase]);
 
   // Sync local timer with server state
   useEffect(() => {
@@ -119,6 +155,15 @@ function TVView({ players, gameState }: TVViewProps) {
                     {index === 2 && '🥉 '}
                     {result.playerName}
                   </div>
+                  {drawingImages[result.playerId] && (
+                    <div className="mb-4 flex justify-center">
+                      <img
+                        src={drawingImages[result.playerId]}
+                        alt={`${result.playerName}'s drawing`}
+                        className="max-w-md max-h-64 rounded-lg border-2 border-border shadow-md object-contain bg-white"
+                      />
+                    </div>
+                  )}
                   <div className="text-2xl text-muted-foreground italic leading-relaxed">
                     "{result.reason}"
                   </div>

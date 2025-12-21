@@ -1,12 +1,14 @@
-import type { GameSession } from '../../types';
+import type { GameSession, ServerToClientEvents, ClientToServerEvents } from '../../types';
 import { getGame } from '../../games';
 import { QRCodeSVG } from 'qrcode.react';
+import type { Socket } from 'socket.io-client';
 
 interface GameContainerProps {
   session: GameSession & { showQRCode?: boolean };
+  socket?: Socket<ServerToClientEvents, ClientToServerEvents> | null;
 }
 
-function GameContainer({ session }: GameContainerProps) {
+function GameContainer({ session, socket }: GameContainerProps) {
   const game = session.currentGameId ? getGame(session.currentGameId) : null;
 
   if (!game) {
@@ -26,6 +28,7 @@ function GameContainer({ session }: GameContainerProps) {
         session={session}
         players={session.players}
         gameState={session.gameState}
+        socket={socket}
       />
 
       {/* Mini QR Code overlay when showQRCode is true during game */}

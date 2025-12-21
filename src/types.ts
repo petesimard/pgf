@@ -36,6 +36,7 @@ export interface ServerToClientEvents {
   'game:state': (state: unknown) => void;
   'games:list': (games: GameDefinition[]) => void;
   'keepalive:ping': () => void;
+  'drawing:image': (data: { playerId: string; imageData: string }) => void;
 }
 
 export interface ClientToServerEvents {

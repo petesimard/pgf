@@ -56,6 +56,10 @@ export function useSocket(): UseSocketReturn {
     });
 
     socket.on('session:state', (newSession) => {
+      console.log('[useSocket] Received session:state:', {
+        currentGameId: newSession.currentGameId,
+        gameState: newSession.gameState,
+      });
       setSession(newSession);
     });
 

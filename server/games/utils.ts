@@ -32,11 +32,16 @@ import type { ServerGameSession, GameServer } from '../types.js';
  * @param io - The Socket.IO server instance
  */
 export function broadcastSessionState(session: ServerGameSession, io: GameServer): void {
-  io.to(session.id).emit('session:state', {
+  // Deep clone gameState to avoid mutating the original
+  let gameStateToSend = session.gameState;
+
+  const stateToSend = {
     id: session.id,
     players: session.players,
     currentGameId: session.currentGameId,
-    gameState: session.gameState,
+    gameState: gameStateToSend,
     status: session.status,
-  });
+  };
+
+  io.to(session.id).emit('session:state', stateToSend);
 }
