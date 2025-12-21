@@ -143,7 +143,7 @@ async function createCollage(drawings: PlayerDrawing[]): Promise<Buffer> {
   const pngBuffer = await canvas.composite(composites).png().toBuffer();
 
   // Save to file for debugging
-  fs.writeFileSync('collage.png', pngBuffer);
+  //fs.writeFileSync('collage.png', pngBuffer);
 
   return pngBuffer;
 }

@@ -30,7 +30,7 @@ interface AIDrawingState {
   currentResultIndex: number; // -1 means none revealed yet
 }
 
-function ClientView({ player, gameState, sendAction }: ClientViewProps) {
+function ClientView({ player, gameState, sendAction, isGameMaster, endGame }: ClientViewProps) {
   const state = gameState as AIDrawingState;
   const editorRef = useRef<Editor | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -234,6 +234,16 @@ function ClientView({ player, gameState, sendAction }: ClientViewProps) {
             </div>
           )}
         </Card>
+
+        {/* End Game button for Game Master when all results revealed */}
+        {allRevealed && isGameMaster && endGame && (
+          <Button
+            onClick={endGame}
+            className="w-full h-12 bg-destructive hover:bg-destructive/90 text-white"
+          >
+            End Game
+          </Button>
+        )}
       </div>
     );
   }

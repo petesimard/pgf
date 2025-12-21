@@ -16,6 +16,7 @@ export interface ClientViewProps {
   isGameMaster: boolean;
   gameState: unknown;
   sendAction: (action: { type: string; payload?: unknown }) => void;
+  endGame?: () => void;
 }
 
 export interface GameRegistration {

@@ -45,6 +45,7 @@ function ClientGameContainer({ session, player, sendAction, endGame, toggleQR }:
         isGameMaster={player.isGameMaster}
         gameState={session.gameState}
         sendAction={sendAction}
+        endGame={endGame}
       />
     </div>
   );
