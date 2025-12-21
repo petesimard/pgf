@@ -1,10 +1,11 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import type { ClientViewProps } from '../types';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { Editor, Erase, Color4, SelectionTool, PanZoomTool, InsertImageWidget } from 'js-draw';
+import { Editor, Erase, Color4 } from 'js-draw';
+import 'js-draw/bundledStyles';
 import 'js-draw/Editor.css';
 
 interface AIDrawingState {
@@ -73,8 +74,7 @@ function ClientView({ player, gameState, sendAction }: ClientViewProps) {
       false // Don't add to history
     );
 
-    // Remove page and pan tools
-    const toolController = editor.toolController;
+    // Add toolbar with drawing tools
     const toolbar = editor.addToolbar(false);
     toolbar.addDefaultActionButtons();
     toolbar.addWidgetsForPrimaryTools();
@@ -93,7 +93,7 @@ function ClientView({ player, gameState, sendAction }: ClientViewProps) {
     };
   }, []);
 
-  const handleSubmit = () => {
+  const handleSubmit = useCallback(() => {
     const editor = editorRef.current;
     if (!editor) return;
 
@@ -104,7 +104,17 @@ function ClientView({ player, gameState, sendAction }: ClientViewProps) {
       payload: { imageData },
     });
     setHasSubmitted(true);
-  };
+  }, [sendAction]);
+
+  // Auto-submit when timer reaches 0
+  useEffect(() => {
+    if (state?.phase !== 'drawing') return;
+    if (localTimeRemaining > 0) return;
+    if (hasSubmitted || playerDrawing?.submitted) return;
+
+    console.log('[ClientView] Auto-submitting drawing due to timer expiration');
+    handleSubmit();
+  }, [localTimeRemaining, state?.phase, hasSubmitted, playerDrawing?.submitted, handleSubmit]);
 
   const handleClear = () => {
     const editor = editorRef.current;
