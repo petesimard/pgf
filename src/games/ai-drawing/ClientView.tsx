@@ -27,6 +27,7 @@ interface AIDrawingState {
     playerName: string;
     reason: string;
   }> | null;
+  currentResultIndex: number; // -1 means none revealed yet
 }
 
 function ClientView({ player, gameState, sendAction }: ClientViewProps) {
@@ -160,26 +161,52 @@ function ClientView({ player, gameState, sendAction }: ClientViewProps) {
   }
 
   if (state.phase === 'results') {
-    const myResult = state.results?.find((r) => r.playerId === player.id);
+    const currentIndex = state.currentResultIndex;
+
+    // Don't show anything if no results revealed yet
+    if (currentIndex < 0 || !state.results || state.results.length === 0) {
+      return (
+        <div className="flex-1 flex flex-col items-center justify-center p-4">
+          <Card className="text-center p-8 bg-card rounded-xl">
+            <div className="text-2xl font-bold text-primary mb-2">Results Coming Soon!</div>
+            <div className="text-muted-foreground">Watch the TV for the results...</div>
+          </Card>
+        </div>
+      );
+    }
+
+    // Only show results up to and including the current index
+    const revealedResults = state.results.slice(0, currentIndex + 1);
+    const myResult = state.results.find((r) => r.playerId === player.id);
+    const myResultRevealed = myResult && revealedResults.some((r) => r.playerId === player.id);
+    const allRevealed = currentIndex >= state.results.length - 1;
+
     return (
       <div className="flex-1 flex flex-col p-4 overflow-y-auto">
         <Card className="p-6 bg-card rounded-xl mb-4">
           <div className="text-center mb-4">
-            <div className="text-2xl font-bold text-primary mb-2">Results</div>
-            {myResult && (
-              <div className="text-lg">
+            <div className="text-2xl font-bold text-primary mb-2">
+              {allRevealed ? 'Final Results' : 'Results Revealing...'}
+            </div>
+            {myResultRevealed && myResult && (
+              <div className="text-lg mb-2">
                 <span className="font-bold">Your rank: #{myResult.rank}</span>
+              </div>
+            )}
+            {!allRevealed && (
+              <div className="text-sm text-muted-foreground">
+                Revealed {revealedResults.length} of {state.results.length}
               </div>
             )}
           </div>
 
-          {state.results && state.results.length > 0 && (
+          {revealedResults.length > 0 && (
             <div className="space-y-3">
-              {state.results.map((result, index) => (
+              {revealedResults.map((result, index) => (
                 <div
                   key={result.playerId}
                   className={cn(
-                    'p-4 rounded-lg border-2',
+                    'p-4 rounded-lg border-2 animate-in fade-in slide-in-from-bottom-4 duration-500',
                     result.playerId === player.id
                       ? 'bg-primary/10 border-primary'
                       : 'bg-card border-border'

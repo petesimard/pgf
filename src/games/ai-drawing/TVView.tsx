@@ -23,6 +23,7 @@ interface AIDrawingState {
     playerName: string;
     reason: string;
   }> | null;
+  currentResultIndex: number; // -1 means none revealed yet
 }
 
 function TVView({ players, gameState, socket }: TVViewProps) {
@@ -112,66 +113,100 @@ function TVView({ players, gameState, socket }: TVViewProps) {
   }
 
   if (state.phase === 'results' && state.results) {
+    const currentIndex = state.currentResultIndex;
+    const allRevealed = currentIndex >= state.results.length - 1;
+
+    // Show waiting message if no results revealed yet
+    if (currentIndex < 0) {
+      return (
+        <div className="min-h-screen flex flex-col items-center justify-center p-8 bg-background">
+          <Card className="text-center p-16 bg-card rounded-2xl max-w-2xl">
+            <div className="text-6xl font-bold text-primary mb-4">Results are ready!</div>
+            <div className="text-2xl text-muted-foreground">
+              Preparing to reveal the rankings...
+            </div>
+          </Card>
+        </div>
+      );
+    }
+
+    // Clamp currentIndex to valid range
+    const safeIndex = Math.min(currentIndex, state.results.length - 1);
+    const currentResult = state.results[safeIndex];
+
+    // Safety check - if still no result, show waiting message
+    if (!currentResult) {
+      return (
+        <div className="min-h-screen flex flex-col items-center justify-center p-8 bg-background">
+          <Card className="text-center p-16 bg-card rounded-2xl max-w-2xl">
+            <div className="text-6xl font-bold text-primary mb-4">Loading results...</div>
+          </Card>
+        </div>
+      );
+    }
+
+    const resultIndex = safeIndex; // 0-based index for styling
+
     return (
-      <div className="min-h-screen flex flex-col p-8 bg-background">
+      <div className="min-h-screen flex flex-col items-center justify-center p-8 bg-background">
         <div className="text-center mb-8">
           <h1 className="text-7xl font-extrabold bg-gradient-to-r from-primary via-[#a855f7] to-[#ec4899] bg-clip-text text-transparent mb-4">
-            🏆 Final Results 🏆
+            🏆 {allRevealed ? 'Final Results' : 'Revealing Results'} 🏆
           </h1>
-          <div className="text-3xl text-muted-foreground">
+          <div className="text-3xl text-muted-foreground mb-2">
             The word was: <span className="font-bold text-primary">{state.word}</span>
+          </div>
+          <div className="text-2xl text-muted-foreground">
+            {allRevealed
+              ? 'All results revealed!'
+              : `Revealing ${currentIndex + 1} of ${state.results.length}`}
           </div>
         </div>
 
-        <div className="grid grid-cols-1 gap-6 max-w-6xl mx-auto w-full">
-          {state.results.map((result, index) => (
-            <Card
-              key={result.playerId}
+        <Card
+          className={cn(
+            'p-12 rounded-2xl border-4 transform transition-all max-w-4xl w-full animate-in fade-in zoom-in duration-700',
+            resultIndex === 0 &&
+              'bg-gradient-to-r from-yellow-100 to-yellow-50 border-yellow-400 shadow-2xl',
+            resultIndex === 1 && 'bg-gradient-to-r from-gray-100 to-gray-50 border-gray-400 shadow-xl',
+            resultIndex === 2 && 'bg-gradient-to-r from-amber-100 to-amber-50 border-amber-600 shadow-xl',
+            resultIndex > 2 && 'bg-card border-border shadow-lg'
+          )}
+        >
+          <div className="flex items-start gap-8">
+            <div
               className={cn(
-                'p-8 rounded-2xl border-4 transform transition-all',
-                index === 0 &&
-                  'bg-gradient-to-r from-yellow-100 to-yellow-50 border-yellow-400 scale-105 shadow-2xl',
-                index === 1 && 'bg-gradient-to-r from-gray-100 to-gray-50 border-gray-400',
-                index === 2 && 'bg-gradient-to-r from-amber-100 to-amber-50 border-amber-600',
-                index > 2 && 'bg-card border-border'
+                'text-8xl font-extrabold w-32 h-32 flex items-center justify-center rounded-full shrink-0',
+                resultIndex === 0 && 'bg-yellow-400 text-white shadow-lg',
+                resultIndex === 1 && 'bg-gray-400 text-white shadow-lg',
+                resultIndex === 2 && 'bg-amber-600 text-white shadow-lg',
+                resultIndex > 2 && 'bg-muted text-muted-foreground'
               )}
             >
-              <div className="flex items-start gap-6">
-                <div
-                  className={cn(
-                    'text-6xl font-extrabold w-20 h-20 flex items-center justify-center rounded-full shrink-0',
-                    index === 0 && 'bg-yellow-400 text-white shadow-lg',
-                    index === 1 && 'bg-gray-400 text-white shadow-lg',
-                    index === 2 && 'bg-amber-600 text-white shadow-lg',
-                    index > 2 && 'bg-muted text-muted-foreground'
-                  )}
-                >
-                  {result.rank}
-                </div>
-                <div className="flex-1">
-                  <div className="text-5xl font-bold mb-3 text-foreground">
-                    {index === 0 && '🥇 '}
-                    {index === 1 && '🥈 '}
-                    {index === 2 && '🥉 '}
-                    {result.playerName}
-                  </div>
-                  {drawingImages[result.playerId] && (
-                    <div className="mb-4 flex justify-center">
-                      <img
-                        src={drawingImages[result.playerId]}
-                        alt={`${result.playerName}'s drawing`}
-                        className="max-w-md max-h-64 rounded-lg border-2 border-border shadow-md object-contain bg-white"
-                      />
-                    </div>
-                  )}
-                  <div className="text-2xl text-muted-foreground italic leading-relaxed">
-                    "{result.reason}"
-                  </div>
-                </div>
+              {currentResult.rank}
+            </div>
+            <div className="flex-1">
+              <div className="text-6xl font-bold mb-6 text-foreground">
+                {resultIndex === 0 && '🥇 '}
+                {resultIndex === 1 && '🥈 '}
+                {resultIndex === 2 && '🥉 '}
+                {currentResult.playerName}
               </div>
-            </Card>
-          ))}
-        </div>
+              {drawingImages[currentResult.playerId] && (
+                <div className="mb-6 flex justify-center">
+                  <img
+                    src={drawingImages[currentResult.playerId]}
+                    alt={`${currentResult.playerName}'s drawing`}
+                    className="max-w-lg max-h-80 rounded-lg border-2 border-border shadow-md object-contain bg-white"
+                  />
+                </div>
+              )}
+              <div className="text-3xl text-muted-foreground italic leading-relaxed">
+                "{currentResult.reason}"
+              </div>
+            </div>
+          </div>
+        </Card>
       </div>
     );
   }
