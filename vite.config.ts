@@ -1,7 +1,6 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import path from 'path'
-import { hostname } from 'os'
 
 export default defineConfig({
   plugins: [react()],
@@ -13,11 +12,7 @@ export default defineConfig({
   server: {
     host: '0.0.0.0',
     port: 5173,
-    allowedHosts: [
-      'localhost',
-      hostname(),
-      '.local', // Allow all .local domains
-    ],
+    allowedHosts: true, // Allow all hosts for network access
     proxy: {
       '/socket.io': {
         target: 'http://localhost:3000',

@@ -177,18 +177,18 @@ function TVView({ players, gameState, socket }: TVViewProps) {
   }
 
   return (
-    <TVGameScene players={players} scores={{}}>
-      <div className="flex flex-col items-center justify-center h-full p-8">
+    <TVGameScene players={players} scores={{}} showScorebox={false}>
+      <div className="flex flex-col items-center justify-start h-full p-8 pt-4">
         {/* Word Display */}
-        <div className="text-center mb-12">
-          <div className="text-5xl text-muted-foreground mb-6">Draw this word:</div>
-          <div className="text-[12rem] font-extrabold bg-gradient-to-r from-primary via-[#a855f7] to-[#ec4899] bg-clip-text text-transparent leading-tight">
+        <div className="text-center mb-8">
+          <div className="text-2xl text-muted-foreground mb-2">Draw this word:</div>
+          <div className="text-7xl font-extrabold bg-gradient-to-r from-primary via-[#a855f7] to-[#ec4899] bg-clip-text text-transparent leading-tight">
             {state.word}
           </div>
         </div>
 
         {/* Timer */}
-        <div className="text-center mb-12">
+        <div className="text-center mb-8">
           <div className="text-4xl text-muted-foreground mb-2">Time Remaining</div>
           <div
             className={cn(

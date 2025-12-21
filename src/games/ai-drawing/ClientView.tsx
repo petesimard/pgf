@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { Editor, Erase, Color4 } from 'js-draw';
+import { Editor, Erase, Color4, BaseTool, SelectionTool, PanZoomTool } from 'js-draw';
 import 'js-draw/bundledStyles';
 import 'js-draw/Editor.css';
 
@@ -77,11 +77,20 @@ function ClientView({ player, gameState, sendAction }: ClientViewProps) {
     // Add toolbar with drawing tools
     const toolbar = editor.addToolbar(false);
     toolbar.addDefaultActionButtons();
-    toolbar.addWidgetsForPrimaryTools();
+    toolbar.addWidgetsForPrimaryTools((tool: BaseTool) => {
+      if (tool instanceof SelectionTool) {
+        return false;
+      }
 
+      if (tool instanceof PanZoomTool) {
+        return false;
+      }
+      return true;
+    });
 
-    editor.getRootElement().style.height = '500px';
-    editor.getRootElement().style.width = '500px';
+    // Set canvas to fill container (will be sized by CSS)
+    editor.getRootElement().style.height = '100%';
+    editor.getRootElement().style.width = '100%';
 
     editorRef.current = editor;
 
@@ -226,13 +235,12 @@ function ClientView({ player, gameState, sendAction }: ClientViewProps) {
       </Card>
 
       {/* Drawing Canvas */}
-      <div className="flex-1 flex items-center justify-center mb-4">
-        <div className="relative p-2 rounded-xl bg-gradient-to-br from-purple-500 via-pink-500 to-orange-500 shadow-lg">
-          <div className="relative w-full" style={{ height: '500px', width: '500px' }}>
+      <div className="flex-1 flex items-center justify-center mb-4 overflow-hidden">
+        <div className="relative p-2 rounded-xl bg-gradient-to-br from-purple-500 via-pink-500 to-orange-500 shadow-lg w-full max-w-2xl">
+          <div className="relative w-full aspect-square">
             <div
               ref={containerRef}
-              style={{ height: '500px', width: '500px' }}
-              className="rounded-lg overflow-hidden"
+              className="rounded-lg overflow-hidden w-full h-full"
             />
             {hasSubmitted && (
               <div className="absolute inset-0 bg-black/50 rounded-lg flex items-center justify-center">

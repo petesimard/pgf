@@ -5,9 +5,10 @@ interface GameSceneProps {
   players: Player[];
   scores: Record<string, number>;
   children: React.ReactNode;
+  showScorebox?: boolean;
 }
 
-function TVGameScene({ players, scores, children }: GameSceneProps) {
+function TVGameScene({ players, scores, children, showScorebox = true }: GameSceneProps) {
   return (
     <div className="w-full h-screen flex flex-col">
       {/* Game Content - takes all available space except scorebox */}
@@ -16,9 +17,11 @@ function TVGameScene({ players, scores, children }: GameSceneProps) {
       </div>
 
       {/* ScoreBox - fixed at bottom */}
-      <div className="flex-shrink-0">
-        <ScoreBox players={players} scores={scores} />
-      </div>
+      {showScorebox && (
+        <div className="flex-shrink-0">
+          <ScoreBox players={players} scores={scores} />
+        </div>
+      )}
     </div>
   );
 }
