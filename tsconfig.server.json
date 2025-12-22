@@ -7,9 +7,9 @@
     "strict": true,
     "skipLibCheck": true,
     "outDir": "./dist/server",
-    "rootDir": "./server",
+    "rootDir": ".",
     "resolveJsonModule": true
   },
-  "include": ["server/**/*"],
+  "include": ["server/**/*", "src/types.ts"],
   "exclude": ["node_modules"]
 }

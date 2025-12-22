@@ -25,6 +25,12 @@ export interface GameDefinition {
   maxPlayers: number;
 }
 
+// Avatar message for host announcements
+export interface AvatarMessage {
+  text: string;
+  emotion?: 'neutral' | 'happy' | 'excited' | 'thinking';
+}
+
 // Socket event types
 export interface ServerToClientEvents {
   'session:state': (session: GameSession) => void;
@@ -37,6 +43,7 @@ export interface ServerToClientEvents {
   'games:list': (games: GameDefinition[]) => void;
   'keepalive:ping': () => void;
   'drawing:image': (data: { playerId: string; imageData: string }) => void;
+  'avatar:speak': (message: AvatarMessage) => void;
 }
 
 export interface ClientToServerEvents {

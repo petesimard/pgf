@@ -27,3 +27,4 @@ export interface GameHandler {
 }
 
 export { Player, GameSession };
+export type { AvatarMessage } from '../src/types.js';
