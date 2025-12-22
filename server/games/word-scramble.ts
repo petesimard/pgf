@@ -286,7 +286,7 @@ function resolveVoting(session: ServerGameSession, io: GameServer): void {
   session.gameState = state;
   broadcastSessionState(session, io);
 
-  // Wait 5 seconds to show results, then return to revealing
+  // Wait 5 seconds to show results, then advance to next reveal
   challengeResultTimer = setTimeout(() => {
     const currentState = session.gameState as WordScrambleState;
     if (!currentState) return;
@@ -294,16 +294,14 @@ function resolveVoting(session: ServerGameSession, io: GameServer): void {
     // Clear challenge result and return to revealing phase
     currentState.challengeResult = null;
     currentState.phase = 'revealing';
-    currentState.revealStartTime = Date.now();
     currentState.votes = {};
     currentState.challengedPlayerId = null;
     currentState.challengedAnswer = null;
 
     session.gameState = currentState;
-    broadcastSessionState(session, io);
 
-    // Resume reveal timer
-    startRevealTimer(session, io);
+    // Advance to next reveal (this will broadcast state)
+    advanceToNextReveal(session, io);
   }, CHALLENGE_RESULT_DISPLAY_SECONDS * 1000);
 }
 
