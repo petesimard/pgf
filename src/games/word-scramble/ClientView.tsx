@@ -51,6 +51,8 @@ interface WordScrambleState {
     upVotes: number;
     downVotes: number;
   } | null;
+  rejectedPlayerIds: string[];  // Track rejected answers for current category
+  challengedPlayerIds: string[]; // Track all challenged players (accepted or rejected)
   categoryHistory: CategoryResult[];
   scores: Record<string, number>;
 }
@@ -201,10 +203,43 @@ function ClientView({ player, players, gameState, sendAction }: ClientViewProps)
               </div>
             </Card>
 
-            {/* Show my answer */}
+            {/* Show my answer with points */}
             <Card className="p-4 bg-primary/10">
               <div className="text-sm text-muted-foreground mb-1">Your answer:</div>
-              <div className="text-xl font-bold">{myAnswer || '(no answer)'}</div>
+              <div className="text-xl font-bold mb-2">{myAnswer || '(no answer)'}</div>
+              {myAnswer && (() => {
+                // Check if I was rejected by challenge
+                const wasRejected = state.rejectedPlayerIds?.includes(player.id) || false;
+
+                // Calculate points for my answer
+                const words = myAnswer.trim().split(/\s+/);
+                const validWords = words.filter(word => {
+                  for (const char of word) {
+                    if (/[a-zA-Z]/.test(char)) {
+                      return char.toLowerCase() === currentLetter.toLowerCase();
+                    }
+                  }
+                  return false;
+                });
+                const points = validWords.length * 10;
+
+                // Check if my answer is a duplicate
+                const normalized = myAnswer.trim().toLowerCase();
+                const duplicateCount = state.revealOrder.filter(pid =>
+                  state.submissions[pid]?.trim().toLowerCase() === normalized
+                ).length;
+                const isDuplicate = duplicateCount > 1;
+                const finalPoints = wasRejected ? 0 : (isDuplicate ? 0 : points);
+
+                return (
+                  <div className={cn(
+                    "text-lg font-extrabold",
+                    finalPoints > 0 ? "text-success" : wasRejected ? "text-destructive" : "text-warning"
+                  )}>
+                    {wasRejected ? 'Rejected - 0 points' : isDuplicate ? 'Duplicate - 0 points' : `${finalPoints} points`}
+                  </div>
+                );
+              })()}
             </Card>
 
             {/* GM Controls */}
@@ -464,9 +499,9 @@ function ClientView({ player, players, gameState, sendAction }: ClientViewProps)
               <div className="text-5xl font-extrabold text-primary mb-2">{myScore}</div>
               <div className="text-lg font-semibold">
                 {myRank === 1 ? '🏆 1st Place!' :
-                 myRank === 2 ? '🥈 2nd Place' :
-                 myRank === 3 ? '🥉 3rd Place' :
-                 `${myRank}th Place`}
+                  myRank === 2 ? '🥈 2nd Place' :
+                    myRank === 3 ? '🥉 3rd Place' :
+                      `${myRank}th Place`}
               </div>
             </div>
           </Card>

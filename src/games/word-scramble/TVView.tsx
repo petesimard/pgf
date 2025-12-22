@@ -49,6 +49,8 @@ interface WordScrambleState {
     upVotes: number;
     downVotes: number;
   } | null;
+  rejectedPlayerIds: string[];  // Track rejected answers for current category
+  challengedPlayerIds: string[]; // Track all challenged players (accepted or rejected)
   categoryHistory: CategoryResult[];
   scores: Record<string, number>;
 }
@@ -180,17 +182,48 @@ function TVView({ players, gameState }: TVViewProps) {
                   {state.revealOrder.map(playerId => {
                     const player = players.find(p => p.id === playerId);
                     const answer = state.submissions[playerId];
+
+                    // Check if this player was rejected by challenge
+                    const wasRejected = state.rejectedPlayerIds?.includes(playerId) || false;
+
+                    // Calculate points for this answer
+                    const words = answer?.trim().split(/\s+/) || [];
+                    const validWords = words.filter(word => {
+                      for (const char of word) {
+                        if (/[a-zA-Z]/.test(char)) {
+                          return char.toLowerCase() === currentLetter.toLowerCase();
+                        }
+                      }
+                      return false;
+                    });
+                    const points = validWords.length * 10;
+
+                    // Check if this answer is a duplicate
+                    const normalized = answer?.trim().toLowerCase() || '';
+                    const duplicateCount = state.revealOrder.filter(pid =>
+                      state.submissions[pid]?.trim().toLowerCase() === normalized
+                    ).length;
+                    const isDuplicate = duplicateCount > 1;
+                    const finalPoints = wasRejected ? 0 : (isDuplicate ? 0 : points);
+
                     return (
                       <div key={playerId} className="flex justify-between items-center p-3 bg-muted/20 rounded">
                         <span className="font-semibold text-xl">{player?.name}</span>
-                        <span className="text-2xl font-bold">{answer}</span>
+                        <div className="flex items-center gap-4">
+                          <span className="text-2xl font-bold">{answer}</span>
+                          <span className={cn(
+                            "text-lg font-extrabold px-3 py-1 rounded",
+                            finalPoints > 0 ? "text-success bg-success/20" : wasRejected ? "text-destructive bg-destructive/20" : "text-warning bg-warning/20"
+                          )}>
+                            {wasRejected ? 'Rejected (0 pts)' : isDuplicate ? 'Duplicate (0 pts)' : `${finalPoints} pts`}
+                          </span>
+                        </div>
                       </div>
                     );
                   })}
                 </div>
               </Card>
             </div>
-
             <div className="text-2xl text-muted-foreground mt-8">
               Waiting for Game Master to continue...
             </div>

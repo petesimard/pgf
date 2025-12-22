@@ -1,12 +1,12 @@
 import type { GameHandler, ServerGameSession, GameServer } from '../types.js';
 import { TestCategoryProvider } from './word-scramble/testCategoryProvider.js';
-import { CountdownTimer, broadcastSessionState } from './utils.js';
+import { CountdownTimer, broadcastSessionState as baseBroadcastSessionState } from './utils.js';
 
 const LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
 const SUBMISSION_TIME_SECONDS = 20;
 const REVEAL_TIME_SECONDS = 5;
 const VOTING_TIME_SECONDS = 10;
-const CHALLENGE_RESULT_DISPLAY_SECONDS = 5;
+const CHALLENGE_RESULT_DISPLAY_SECONDS = 3;
 const CATEGORIES_PER_GAME = 5;
 
 // New state interfaces
@@ -67,6 +67,8 @@ export interface WordScrambleState {
     upVotes: number;
     downVotes: number;
   } | null;
+  rejectedPlayerIds: Set<string>;  // Track rejected answers for current category
+  challengedPlayerIds: Set<string>; // Track all challenged players (accepted or rejected)
 
   // Historical data
   categoryHistory: CategoryResult[];
@@ -275,6 +277,14 @@ function resolveVoting(session: ServerGameSession, io: GameServer): void {
     `Voting complete: ${downVotes}/${totalVotes} down votes, answer ${rejected ? 'REJECTED' : 'ACCEPTED'}`
   );
 
+  // Track challenged and rejected players for scoring
+  if (state.challengedPlayerId) {
+    state.challengedPlayerIds.add(state.challengedPlayerId);
+    if (rejected) {
+      state.rejectedPlayerIds.add(state.challengedPlayerId);
+    }
+  }
+
   // Store challenge result to display for 5 seconds
   state.challengeResult = {
     accepted,
@@ -317,6 +327,64 @@ function checkAllVoted(state: WordScrambleState, session: ServerGameSession): bo
 }
 
 /**
+ * Custom broadcast that converts Sets to arrays for JSON serialization
+ */
+function broadcastSessionState(session: ServerGameSession, io: GameServer): void {
+  const state = session.gameState as WordScrambleState;
+  if (state) {
+    // Convert Sets to arrays for JSON serialization
+    const serializedState = {
+      ...state,
+      rejectedPlayerIds: Array.from(state.rejectedPlayerIds),
+      challengedPlayerIds: Array.from(state.challengedPlayerIds),
+    };
+    session.gameState = serializedState as any;
+  }
+  baseBroadcastSessionState(session, io);
+  // Restore the Sets
+  if (state) {
+    session.gameState = state;
+  }
+}
+
+/**
+ * Count words in an answer that start with the required letter
+ * @param answer - The player's submitted answer
+ * @param letter - The required starting letter
+ * @returns Number of valid words
+ */
+function countValidWords(answer: string, letter: string): number {
+  if (!answer?.trim()) return 0;
+
+  // Split by any whitespace
+  const words = answer.trim().split(/\s+/);
+  const targetLetter = letter.toLowerCase();
+
+  let validCount = 0;
+
+  for (const word of words) {
+    if (!word) continue;
+
+    // Find first letter character, ignoring leading punctuation
+    let firstLetter: string | null = null;
+    for (const char of word) {
+      // Check if character is a letter (A-Z, a-z)
+      if (/[a-zA-Z]/.test(char)) {
+        firstLetter = char;
+        break;
+      }
+    }
+
+    // Count this word if it starts with the required letter
+    if (firstLetter && firstLetter.toLowerCase() === targetLetter) {
+      validCount++;
+    }
+  }
+
+  return validCount;
+}
+
+/**
  * Calculate scores for completed category and store in history
  */
 function completeCategoryAndCalculateScores(session: ServerGameSession, _io: GameServer): void {
@@ -327,68 +395,74 @@ function completeCategoryAndCalculateScores(session: ServerGameSession, _io: Gam
   const letter = state.letters[categoryIndex];
   const category = state.categories[categoryIndex];
 
-  // Track which answers were rejected by challenges
-  // For now, we'll need to implement challenge tracking properly
-  // This is a simplified version - we'll enhance it
-  const challengeResults: Record<string, boolean> = {}; // playerId -> wasRejected
-
   // Group submissions by normalized answer
   const normalizedAnswers = new Map<string, string[]>(); // normalized -> playerIds[]
 
+  // First pass: Calculate base points for each submission
+  const basePoints = new Map<string, number>(); // playerId -> base points
+
   for (const [playerId, answer] of Object.entries(state.submissions)) {
-    if (!answer?.trim()) continue;
-
-    // Skip if rejected by challenge
-    if (challengeResults[playerId]) continue;
-
-    const normalized = answer.trim().toLowerCase();
-
-    // Validate starts with letter
-    if (!normalized.startsWith(letter.toLowerCase())) {
-      // Invalid letter - 0 points
+    if (!answer?.trim()) {
+      basePoints.set(playerId, 0);
       continue;
     }
 
+    // Skip if rejected by challenge
+    if (state.rejectedPlayerIds.has(playerId)) {
+      basePoints.set(playerId, 0);
+      continue;
+    }
+
+    // Calculate points: 10 per valid word
+    const validWordCount = countValidWords(answer, letter);
+    const points = validWordCount * 10;
+    basePoints.set(playerId, points);
+
+    // Also track normalized answers for duplicate detection
+    const normalized = answer.trim().toLowerCase();
     if (!normalizedAnswers.has(normalized)) {
       normalizedAnswers.set(normalized, []);
     }
     normalizedAnswers.get(normalized)!.push(playerId);
   }
 
+  // Second pass: Apply duplicate penalty
+  const finalScores = new Map<string, number>(); // playerId -> final points
+
+  for (const [normalized, playerIds] of normalizedAnswers.entries()) {
+    if (playerIds.length > 1) {
+      // Duplicate detected - all players get 0 points
+      for (const playerId of playerIds) {
+        finalScores.set(playerId, 0);
+      }
+    } else {
+      // Unique answer - keep base points
+      const playerId = playerIds[0];
+      finalScores.set(playerId, basePoints.get(playerId) || 0);
+    }
+  }
+
   // Build PlayerAnswer results
   const answers: PlayerAnswer[] = [];
   const categoryScores: Record<string, number> = {};
 
-  // Award points
-  for (const playerIds of Array.from(normalizedAnswers.values())) {
-    const points = playerIds.length === 1 ? 1 : 0;
-    for (const playerId of playerIds) {
-      const player = session.players.find((p) => p.id === playerId);
-      answers.push({
-        playerId,
-        playerName: player?.name || 'Unknown',
-        answer: state.submissions[playerId],
-        wasAccepted: true,
-        pointsEarned: points,
-        wasChallenged: false,
-      });
-      categoryScores[playerId] = points;
-    }
-  }
-
-  // Add 0-point entries for invalid/empty answers
   for (const [playerId, answer] of Object.entries(state.submissions)) {
-    if (!categoryScores[playerId]) {
-      const player = session.players.find((p) => p.id === playerId);
-      answers.push({
-        playerId,
-        playerName: player?.name || 'Unknown',
-        answer,
-        wasAccepted: false,
-        pointsEarned: 0,
-        wasChallenged: false,
-      });
-    }
+    const player = session.players.find((p) => p.id === playerId);
+    const points = finalScores.get(playerId) ?? 0;
+    const hasValidWords = (basePoints.get(playerId) ?? 0) > 0;
+    const wasChallenged = state.challengedPlayerIds.has(playerId);
+    const wasRejected = state.rejectedPlayerIds.has(playerId);
+
+    answers.push({
+      playerId,
+      playerName: player?.name || 'Unknown',
+      answer: answer,
+      wasAccepted: !wasRejected && hasValidWords && points > 0, // Accepted if not rejected, had valid words, and not duplicated
+      pointsEarned: points,
+      wasChallenged: wasChallenged,
+    });
+
+    categoryScores[playerId] = points;
   }
 
   // Store in history
@@ -428,6 +502,8 @@ function proceedToNextCategory(session: ServerGameSession, io: GameServer): void
     state.submissions = {};
     state.revealOrder = [];
     state.currentRevealIndex = -1;
+    state.rejectedPlayerIds = new Set(); // Clear rejected players for new category
+    state.challengedPlayerIds = new Set(); // Clear challenged players for new category
 
     session.gameState = state;
     broadcastSessionState(session, io);
@@ -501,6 +577,8 @@ export const wordScrambleGame: GameHandler = {
       votes: {},
       votingStartTime: 0,
       challengeResult: null,
+      rejectedPlayerIds: new Set(),
+      challengedPlayerIds: new Set(),
       categoryHistory: [],
       scores: initializeScores(session),
     };
@@ -650,6 +728,8 @@ export const wordScrambleGame: GameHandler = {
         state.submissions = {};
         state.revealOrder = [];
         state.currentRevealIndex = -1;
+        state.rejectedPlayerIds = new Set();
+        state.challengedPlayerIds = new Set();
         state.categoryHistory = [];
         // Keep scores from previous round
 
