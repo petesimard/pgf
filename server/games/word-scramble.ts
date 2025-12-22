@@ -6,6 +6,7 @@ const LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
 const SUBMISSION_TIME_SECONDS = 20;
 const REVEAL_TIME_SECONDS = 5;
 const VOTING_TIME_SECONDS = 10;
+const CHALLENGE_RESULT_DISPLAY_SECONDS = 5;
 const CATEGORIES_PER_GAME = 5;
 
 // New state interfaces
@@ -35,6 +36,11 @@ export interface WordScrambleState {
   letters: string[];           // 5 different letters, one per category
   categories: string[];        // 5 categories
 
+  // Timing configuration (sent from server)
+  submissionTimeSeconds: number;
+  revealTimeSeconds: number;
+  votingTimeSeconds: number;
+
   // Round tracking
   currentCategoryIndex: number; // 0-4
   roundNumber: number;
@@ -56,6 +62,11 @@ export interface WordScrambleState {
   challengedAnswer: string | null;
   votes: Record<string, 'up' | 'down'>;
   votingStartTime: number;
+  challengeResult: {
+    accepted: boolean;
+    upVotes: number;
+    downVotes: number;
+  } | null;
 
   // Historical data
   categoryHistory: CategoryResult[];
@@ -68,6 +79,7 @@ export interface WordScrambleState {
 let submissionTimer: CountdownTimer | null = null;
 let revealTimer: NodeJS.Timeout | null = null;
 let votingTimer: CountdownTimer | null = null;
+let challengeResultTimer: NodeJS.Timeout | null = null;
 
 const categoryProvider = new TestCategoryProvider();
 
@@ -107,6 +119,10 @@ function clearAllTimers(): void {
   if (votingTimer) {
     votingTimer.stop();
     votingTimer = null;
+  }
+  if (challengeResultTimer) {
+    clearTimeout(challengeResultTimer);
+    challengeResultTimer = null;
   }
 }
 
@@ -248,37 +264,47 @@ function resolveVoting(session: ServerGameSession, io: GameServer): void {
 
   // Count votes
   const voteArray = Object.values(state.votes);
+  const upVotes = voteArray.filter((v) => v === 'up').length;
   const downVotes = voteArray.filter((v) => v === 'down').length;
   const totalVotes = voteArray.length;
 
   const rejected = totalVotes > 0 && downVotes / totalVotes >= 0.5;
+  const accepted = !rejected;
 
   console.log(
     `Voting complete: ${downVotes}/${totalVotes} down votes, answer ${rejected ? 'REJECTED' : 'ACCEPTED'}`
   );
 
-  // Store challenge result (we'll use it during scoring)
-  // For now, just log it - we'll track it in categoryHistory when category completes
+  // Store challenge result to display for 5 seconds
+  state.challengeResult = {
+    accepted,
+    upVotes,
+    downVotes,
+  };
 
-  // Return to revealing phase
-  state.phase = 'revealing';
-  state.revealStartTime = Date.now();
-
-  // Store the vote result temporarily (we'll need this for scoring)
-  // We can track rejected answers in a separate map
-  if (!state.categoryHistory) {
-    state.categoryHistory = [];
-  }
-
-  state.votes = {};
-  state.challengedPlayerId = null;
-  state.challengedAnswer = null;
-
+  // Keep in voting phase but with results shown
   session.gameState = state;
   broadcastSessionState(session, io);
 
-  // Resume reveal timer
-  startRevealTimer(session, io);
+  // Wait 5 seconds to show results, then return to revealing
+  challengeResultTimer = setTimeout(() => {
+    const currentState = session.gameState as WordScrambleState;
+    if (!currentState) return;
+
+    // Clear challenge result and return to revealing phase
+    currentState.challengeResult = null;
+    currentState.phase = 'revealing';
+    currentState.revealStartTime = Date.now();
+    currentState.votes = {};
+    currentState.challengedPlayerId = null;
+    currentState.challengedAnswer = null;
+
+    session.gameState = currentState;
+    broadcastSessionState(session, io);
+
+    // Resume reveal timer
+    startRevealTimer(session, io);
+  }, CHALLENGE_RESULT_DISPLAY_SECONDS * 1000);
 }
 
 /**
@@ -461,6 +487,9 @@ export const wordScrambleGame: GameHandler = {
     const state: WordScrambleState = {
       letters: letters,
       categories: categories,
+      submissionTimeSeconds: SUBMISSION_TIME_SECONDS,
+      revealTimeSeconds: REVEAL_TIME_SECONDS,
+      votingTimeSeconds: VOTING_TIME_SECONDS,
       currentCategoryIndex: 0,
       roundNumber: 1,
       phase: 'submitting',
@@ -473,6 +502,7 @@ export const wordScrambleGame: GameHandler = {
       challengedAnswer: null,
       votes: {},
       votingStartTime: 0,
+      challengeResult: null,
       categoryHistory: [],
       scores: initializeScores(session),
     };

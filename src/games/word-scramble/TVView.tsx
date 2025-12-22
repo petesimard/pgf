@@ -29,6 +29,9 @@ interface CategoryResult {
 interface WordScrambleState {
   letters: string[];
   categories: string[];
+  submissionTimeSeconds: number;
+  revealTimeSeconds: number;
+  votingTimeSeconds: number;
   currentCategoryIndex: number;
   roundNumber: number;
   phase: 'submitting' | 'revealing' | 'voting' | 'results';
@@ -41,13 +44,14 @@ interface WordScrambleState {
   challengedAnswer: string | null;
   votes: Record<string, 'up' | 'down'>;
   votingStartTime: number;
+  challengeResult: {
+    accepted: boolean;
+    upVotes: number;
+    downVotes: number;
+  } | null;
   categoryHistory: CategoryResult[];
   scores: Record<string, number>;
 }
-
-const SUBMISSION_TIME_SECONDS = 20;
-const REVEAL_TIME_SECONDS = 5;
-const VOTING_TIME_SECONDS = 10;
 
 function TVView({ players, gameState }: TVViewProps) {
   const state = gameState as WordScrambleState;
@@ -63,13 +67,13 @@ function TVView({ players, gameState }: TVViewProps) {
 
       if (state.phase === 'submitting') {
         elapsed = Math.floor((Date.now() - state.submissionStartTime) / 1000);
-        duration = SUBMISSION_TIME_SECONDS;
+        duration = state.submissionTimeSeconds;
       } else if (state.phase === 'revealing') {
         elapsed = Math.floor((Date.now() - state.revealStartTime) / 1000);
-        duration = REVEAL_TIME_SECONDS;
+        duration = state.revealTimeSeconds;
       } else if (state.phase === 'voting') {
         elapsed = Math.floor((Date.now() - state.votingStartTime) / 1000);
-        duration = VOTING_TIME_SECONDS;
+        duration = state.votingTimeSeconds;
       }
 
       const remaining = Math.max(0, duration - elapsed);
@@ -77,7 +81,7 @@ function TVView({ players, gameState }: TVViewProps) {
     }, 100);
 
     return () => clearInterval(interval);
-  }, [state?.phase, state?.submissionStartTime, state?.revealStartTime, state?.votingStartTime]);
+  }, [state?.phase, state?.submissionStartTime, state?.revealStartTime, state?.votingStartTime, state?.submissionTimeSeconds, state?.revealTimeSeconds, state?.votingTimeSeconds]);
 
   if (!state || !state.letters || !state.categories) {
     return (
@@ -247,6 +251,52 @@ function TVView({ players, gameState }: TVViewProps) {
     const upVotes = Object.values(state.votes).filter(v => v === 'up').length;
     const downVotes = Object.values(state.votes).filter(v => v === 'down').length;
 
+    // Show result if voting is complete
+    if (state.challengeResult) {
+      return (
+        <TVGameScene players={players} scores={state.scores}>
+          <div className="flex flex-col items-center justify-center h-full p-8">
+            {/* Result Header */}
+            <div className={cn(
+              "text-9xl font-extrabold mb-12 animate-pulse",
+              state.challengeResult.accepted ? "text-success" : "text-destructive"
+            )}>
+              {state.challengeResult.accepted ? "ACCEPTED" : "REJECTED"}
+            </div>
+
+            {/* Challenged Answer */}
+            <div className="text-3xl text-muted-foreground mb-4">
+              {currentCategory} ({currentLetter})
+            </div>
+
+            <div className="text-4xl font-bold text-foreground mb-6">
+              {challengedPlayer?.name}
+            </div>
+
+            <Card className={cn(
+              "p-10 backdrop-blur mb-8 border-2",
+              state.challengeResult.accepted ? "bg-success/10 border-success" : "bg-destructive/10 border-destructive"
+            )}>
+              <div className="text-6xl font-extrabold text-foreground text-center">
+                "{state.challengedAnswer}"
+              </div>
+            </Card>
+
+            {/* Final vote counts */}
+            <div className="flex gap-12 text-4xl font-bold">
+              <div>
+                👍 {state.challengeResult.upVotes}
+              </div>
+              <div>
+                👎 {state.challengeResult.downVotes}
+              </div>
+            </div>
+          </div>
+        </TVGameScene>
+      );
+    }
+
+    // Still voting
     return (
       <TVGameScene players={players} scores={state.scores}>
         <div className="flex flex-col items-center justify-center h-full p-8">

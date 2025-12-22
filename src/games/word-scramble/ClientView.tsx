@@ -31,6 +31,9 @@ interface CategoryResult {
 interface WordScrambleState {
   letters: string[];
   categories: string[];
+  submissionTimeSeconds: number;
+  revealTimeSeconds: number;
+  votingTimeSeconds: number;
   currentCategoryIndex: number;
   roundNumber: number;
   phase: 'submitting' | 'revealing' | 'voting' | 'results';
@@ -43,13 +46,14 @@ interface WordScrambleState {
   challengedAnswer: string | null;
   votes: Record<string, 'up' | 'down'>;
   votingStartTime: number;
+  challengeResult: {
+    accepted: boolean;
+    upVotes: number;
+    downVotes: number;
+  } | null;
   categoryHistory: CategoryResult[];
   scores: Record<string, number>;
 }
-
-const SUBMISSION_TIME_SECONDS = 20;
-const REVEAL_TIME_SECONDS = 5;
-const VOTING_TIME_SECONDS = 10;
 
 function ClientView({ player, players, gameState, sendAction }: ClientViewProps) {
   const state = gameState as WordScrambleState;
@@ -68,13 +72,13 @@ function ClientView({ player, players, gameState, sendAction }: ClientViewProps)
 
       if (state.phase === 'submitting') {
         elapsed = Math.floor((Date.now() - state.submissionStartTime) / 1000);
-        duration = SUBMISSION_TIME_SECONDS;
+        duration = state.submissionTimeSeconds;
       } else if (state.phase === 'revealing') {
         elapsed = Math.floor((Date.now() - state.revealStartTime) / 1000);
-        duration = REVEAL_TIME_SECONDS;
+        duration = state.revealTimeSeconds;
       } else if (state.phase === 'voting') {
         elapsed = Math.floor((Date.now() - state.votingStartTime) / 1000);
-        duration = VOTING_TIME_SECONDS;
+        duration = state.votingTimeSeconds;
       }
 
       const remaining = Math.max(0, duration - elapsed);
@@ -82,7 +86,7 @@ function ClientView({ player, players, gameState, sendAction }: ClientViewProps)
     }, 100);
 
     return () => clearInterval(interval);
-  }, [state?.phase, state?.submissionStartTime, state?.revealStartTime, state?.votingStartTime]);
+  }, [state?.phase, state?.submissionStartTime, state?.revealStartTime, state?.votingStartTime, state?.submissionTimeSeconds, state?.revealTimeSeconds, state?.votingTimeSeconds]);
 
   // Reset answer field when new category starts
   useEffect(() => {
@@ -312,6 +316,50 @@ function ClientView({ player, players, gameState, sendAction }: ClientViewProps)
     const eligibleVoters = players.filter(p => p.isActive && p.id !== state.challengedPlayerId);
     const voteCount = Object.keys(state.votes).length;
 
+    // Show result if voting is complete
+    if (state.challengeResult) {
+      return (
+        <ClientGameScene players={players} scores={state.scores}>
+          <div className="space-y-4">
+            <Card className={cn(
+              "p-6 border-2",
+              state.challengeResult.accepted ? "bg-success/20 border-success" : "bg-destructive/20 border-destructive"
+            )}>
+              <div className="space-y-4">
+                {/* Result Header */}
+                <div className={cn(
+                  "text-5xl font-extrabold text-center animate-pulse",
+                  state.challengeResult.accepted ? "text-success" : "text-destructive"
+                )}>
+                  {state.challengeResult.accepted ? "ACCEPTED" : "REJECTED"}
+                </div>
+
+                {/* Challenged Answer */}
+                <div className="text-center">
+                  <div className="text-sm text-muted-foreground mb-2">
+                    {currentCategory} ({currentLetter})
+                  </div>
+                  <div className="text-lg font-bold mb-2">{challengedPlayer?.name}</div>
+                  <div className="text-2xl font-extrabold">"{state.challengedAnswer}"</div>
+                </div>
+
+                {/* Final vote counts */}
+                <div className="flex gap-8 justify-center text-2xl font-bold">
+                  <div>👍 {state.challengeResult.upVotes}</div>
+                  <div>👎 {state.challengeResult.downVotes}</div>
+                </div>
+              </div>
+            </Card>
+
+            <div className="text-center text-sm text-muted-foreground">
+              Returning to reveals...
+            </div>
+          </div>
+        </ClientGameScene>
+      );
+    }
+
+    // Still voting
     return (
       <ClientGameScene players={players} scores={state.scores}>
         <div className="space-y-4">
