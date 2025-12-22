@@ -18,10 +18,7 @@ function PlayerList({ players, showScores = false, scores = {} }: PlayerListProp
 
   return (
     <div className="mt-2 sm:mt-4 lg:mt-6 w-full max-w-2xl px-2">
-      <h2 className="text-lg sm:text-xl lg:text-2xl mb-2 sm:mb-3 lg:mb-4 text-foreground font-extrabold text-shadow-sm">
-        Players ({activePlayers}
-        {waitingPlayers > 0 && ` + ${waitingPlayers} waiting`})
-      </h2>
+
       <div className="flex flex-wrap gap-2 sm:gap-3 justify-center">
         {players.map((player) => (
           <Card
