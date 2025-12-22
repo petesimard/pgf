@@ -272,6 +272,43 @@ io.on('connection', (socket: GameSocket) => {
     }
   });
 
+  // Player renames themselves
+  socket.on('player:rename', (newName, callback) => {
+    const mapping = socketToSession.get(socket.id);
+    if (!mapping || mapping.isTV || !mapping.playerId) {
+      callback({ success: false, error: 'Not a player' });
+      return;
+    }
+
+    const session = sessions.get(mapping.sessionId);
+    if (!session) {
+      callback({ success: false, error: 'Session not found' });
+      return;
+    }
+
+    const player = session.players.find((p) => p.id === mapping.playerId);
+    if (!player) {
+      callback({ success: false, error: 'Player not found' });
+      return;
+    }
+
+    const trimmedName = newName.trim().slice(0, 20);
+    if (!trimmedName) {
+      callback({ success: false, error: 'Name cannot be empty' });
+      return;
+    }
+
+    const oldName = player.name;
+    player.name = trimmedName;
+
+    console.log(`Player renamed from "${oldName}" to "${trimmedName}" in session ${session.id}`);
+
+    callback({ success: true });
+
+    // Notify all clients of the updated player list
+    broadcastSessionState(session);
+  });
+
   // Game Master selects a game
   socket.on('game:select', (gameId) => {
     const mapping = socketToSession.get(socket.id);

@@ -22,7 +22,7 @@ function HamburgerMenu({ children }: HamburgerMenuProps) {
         <Button
           variant="outline"
           size="icon"
-          className="fixed top-4 right-4 z-[1000] w-[54px] h-[54px] bg-card border-3 rounded-2xl p-0 shadow-playful hover:shadow-playful-lg hover:-translate-y-0.5 hover:border-primary active:translate-y-0 active:shadow-playful-sm"
+          className="fixed top-2 right-2 z-40 w-[54px] h-[54px] bg-card border-3 rounded-2xl p-0 shadow-playful hover:shadow-playful-lg hover:-translate-y-0.5 hover:border-primary active:translate-y-0 active:shadow-playful-sm"
           aria-label="Menu"
         >
           <div className="w-6 h-[18px] relative flex flex-col justify-between">

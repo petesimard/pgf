@@ -262,6 +262,7 @@ function ClientView({ player, gameState, sendAction, isGameMaster, endGame }: Cl
             timeRemaining={localTimeRemaining}
             label="Time Left"
             size="sm"
+            className='mr-12'
           />
         </div>
       </Card>

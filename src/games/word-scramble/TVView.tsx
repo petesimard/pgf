@@ -184,7 +184,7 @@ function TVView({ players, gameState }: TVViewProps) {
                     const answer = state.submissions[playerId];
 
                     // Check if this player was rejected by challenge
-                    const wasRejected = state.rejectedPlayerIds?.includes(playerId) || false;
+                    const wasRejected = Array.isArray(state.rejectedPlayerIds) && state.rejectedPlayerIds.includes(playerId);
 
                     // Calculate points for this answer
                     const words = answer?.trim().split(/\s+/) || [];

@@ -5,6 +5,8 @@ import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { cn } from '@/lib/utils';
+import HamburgerMenu from './HamburgerMenu';
+import ChangeNameDialog from './ChangeNameDialog';
 
 interface ClientLobbyProps {
   session: GameSession;
@@ -13,9 +15,10 @@ interface ClientLobbyProps {
   onSelectGame: (gameId: string) => void;
   onStartGame: () => void;
   error: string | null;
+  renamePlayer: (newName: string) => Promise<void>;
 }
 
-function ClientLobby({ session, player, games, onSelectGame, onStartGame, error }: ClientLobbyProps) {
+function ClientLobby({ session, player, games, onSelectGame, onStartGame, error, renamePlayer }: ClientLobbyProps) {
   const activePlayers = session.players.filter((p) => p.connected && p.isActive).length;
   const selectedGame = games.find((g) => g.id === session.currentGameId);
   const isDev = import.meta.env.DEV;
@@ -24,6 +27,11 @@ function ClientLobby({ session, player, games, onSelectGame, onStartGame, error 
 
   return (
     <div className="min-h-screen flex flex-col p-4 max-w-lg mx-auto bg-background">
+      {/* Hamburger Menu for all players */}
+      <HamburgerMenu>
+        <ChangeNameDialog currentName={player.name} onChangeName={renamePlayer} />
+      </HamburgerMenu>
+
       <Card className="text-center py-5 px-6 mb-5 bg-card rounded-2xl border-3 shadow-playful">
         <h1 className="text-3xl font-black text-foreground text-shadow-sm mb-1 uppercase">
           Lobby

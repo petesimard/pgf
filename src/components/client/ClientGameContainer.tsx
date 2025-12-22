@@ -2,6 +2,7 @@ import type { GameSession, Player } from '../../types';
 import { getGame } from '../../games';
 import GameMasterControls from './GameMasterControls';
 import HamburgerMenu from './HamburgerMenu';
+import ChangeNameDialog from './ChangeNameDialog';
 
 interface ClientGameContainerProps {
   session: GameSession & { showQRCode?: boolean };
@@ -9,9 +10,10 @@ interface ClientGameContainerProps {
   sendAction: (action: { type: string; payload?: unknown }) => void;
   endGame: () => void;
   toggleQR: (show: boolean) => void;
+  renamePlayer: (newName: string) => Promise<void>;
 }
 
-function ClientGameContainer({ session, player, sendAction, endGame, toggleQR }: ClientGameContainerProps) {
+function ClientGameContainer({ session, player, sendAction, endGame, toggleQR, renamePlayer }: ClientGameContainerProps) {
   const game = session.currentGameId ? getGame(session.currentGameId) : null;
 
   if (!game) {
@@ -26,16 +28,20 @@ function ClientGameContainer({ session, player, sendAction, endGame, toggleQR }:
 
   return (
     <div className="client-container">
-      {/* Hamburger Menu with Game Master Controls */}
-      {player.isGameMaster && (
-        <HamburgerMenu>
+      {/* Hamburger Menu for all players */}
+      <HamburgerMenu>
+        {/* Game Master Controls (only for GM) */}
+        {player.isGameMaster && (
           <GameMasterControls
             showQRCode={session.showQRCode ?? false}
             onToggleQR={toggleQR}
             onEndGame={endGame}
           />
-        </HamburgerMenu>
-      )}
+        )}
+
+        {/* Change Name option (for all players) */}
+        <ChangeNameDialog currentName={player.name} onChangeName={renamePlayer} />
+      </HamburgerMenu>
 
       {/* Game-specific view */}
       <ClientView

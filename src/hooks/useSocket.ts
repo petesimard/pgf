@@ -25,6 +25,7 @@ interface UseSocketReturn {
   error: string | null;
   createSession: () => Promise<string>;
   joinSession: (sessionId: string, name: string) => Promise<string>;
+  renamePlayer: (newName: string) => Promise<void>;
   selectGame: (gameId: string) => void;
   startGame: () => void;
   endGame: () => void;
@@ -116,6 +117,25 @@ export function useSocket(): UseSocketReturn {
     });
   }, []);
 
+  const renamePlayer = useCallback((newName: string): Promise<void> => {
+    return new Promise((resolve, reject) => {
+      if (!socketRef.current) {
+        reject(new Error('Not connected'));
+        return;
+      }
+
+      socketRef.current.emit('player:rename', newName, (response) => {
+        if (response.success) {
+          // Update localStorage with new name
+          localStorage.setItem('playerName', newName);
+          resolve();
+        } else {
+          reject(new Error(response.error || 'Failed to rename player'));
+        }
+      });
+    });
+  }, []);
+
   const selectGame = useCallback((gameId: string) => {
     socketRef.current?.emit('game:select', gameId);
   }, []);
@@ -145,6 +165,7 @@ export function useSocket(): UseSocketReturn {
     error,
     createSession,
     joinSession,
+    renamePlayer,
     selectGame,
     startGame,
     endGame,

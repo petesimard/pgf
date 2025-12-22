@@ -9,7 +9,7 @@ const PLAYER_NAME_KEY = 'playerName';
 
 function ClientApp() {
   const { sessionId } = useParams<{ sessionId: string }>();
-  const { connected, session, games, playerId, error, joinSession, selectGame, startGame, endGame, sendAction, toggleQR } = useSocket();
+  const { connected, session, games, playerId, error, joinSession, renamePlayer, selectGame, startGame, endGame, sendAction, toggleQR } = useSocket();
   const [joinError, setJoinError] = useState<string | null>(null);
   const [hasJoined, setHasJoined] = useState(false);
   const [autoJoining, setAutoJoining] = useState(false);
@@ -122,6 +122,7 @@ function ClientApp() {
         sendAction={sendAction}
         endGame={endGame}
         toggleQR={toggleQR}
+        renamePlayer={renamePlayer}
       />
     );
   }
@@ -135,6 +136,7 @@ function ClientApp() {
       onSelectGame={selectGame}
       onStartGame={startGame}
       error={error}
+      renamePlayer={renamePlayer}
     />
   );
 }

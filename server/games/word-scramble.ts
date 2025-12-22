@@ -332,18 +332,25 @@ function checkAllVoted(state: WordScrambleState, session: ServerGameSession): bo
 function broadcastSessionState(session: ServerGameSession, io: GameServer): void {
   const state = session.gameState as WordScrambleState;
   if (state) {
-    // Convert Sets to arrays for JSON serialization
-    const serializedState = {
-      ...state,
-      rejectedPlayerIds: Array.from(state.rejectedPlayerIds),
-      challengedPlayerIds: Array.from(state.challengedPlayerIds),
-    };
-    session.gameState = serializedState as any;
-  }
-  baseBroadcastSessionState(session, io);
-  // Restore the Sets
-  if (state) {
-    session.gameState = state;
+    // Temporarily convert Sets to arrays directly on the state object
+    const rejectedArray = Array.from(state.rejectedPlayerIds);
+    const challengedArray = Array.from(state.challengedPlayerIds);
+
+    // Store original Sets
+    const originalRejected = state.rejectedPlayerIds;
+    const originalChallenged = state.challengedPlayerIds;
+
+    // Replace Sets with arrays for broadcast
+    (state as any).rejectedPlayerIds = rejectedArray;
+    (state as any).challengedPlayerIds = challengedArray;
+
+    baseBroadcastSessionState(session, io);
+
+    // Restore the Sets
+    state.rejectedPlayerIds = originalRejected;
+    state.challengedPlayerIds = originalChallenged;
+  } else {
+    baseBroadcastSessionState(session, io);
   }
 }
 

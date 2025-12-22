@@ -41,6 +41,7 @@ export interface ServerToClientEvents {
 
 export interface ClientToServerEvents {
   'player:join': (data: { sessionId: string; name: string; deviceId: string }, callback: (response: { success: boolean; playerId?: string; error?: string }) => void) => void;
+  'player:rename': (newName: string, callback: (response: { success: boolean; error?: string }) => void) => void;
   'session:create': (callback: (response: { success: boolean; sessionId?: string; error?: string }) => void) => void;
   'session:join': (sessionId: string, callback: (response: { success: boolean; error?: string }) => void) => void;
   'game:select': (gameId: string) => void;

@@ -218,7 +218,7 @@ function ClientView({ player, players, gameState, sendAction }: ClientViewProps)
               <div className="text-xl font-bold mb-2">{myAnswer || '(no answer)'}</div>
               {myAnswer && (() => {
                 // Check if I was rejected by challenge
-                const wasRejected = state.rejectedPlayerIds?.includes(player.id) || false;
+                const wasRejected = Array.isArray(state.rejectedPlayerIds) && state.rejectedPlayerIds.includes(player.id);
 
                 // Calculate points for my answer
                 const words = myAnswer.trim().split(/\s+/);
