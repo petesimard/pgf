@@ -642,6 +642,42 @@ export const wordScrambleGame: GameHandler = {
         break;
       }
 
+      case 'reroll-letter': {
+        // GM can reroll the letter during submission phase
+        if (!player.isGameMaster || state.phase !== 'submitting') return;
+
+        console.log('GM rerolling letter');
+
+        // Clear submission timer
+        if (submissionTimer) {
+          submissionTimer.stop();
+          submissionTimer = null;
+        }
+
+        // Generate a new random letter (excluding the current one)
+        const currentLetter = state.letters[state.currentCategoryIndex];
+        const availableLetters = LETTERS.filter(l => l !== currentLetter);
+        const newLetter = availableLetters[Math.floor(Math.random() * availableLetters.length)];
+
+        // Update the letter for current category
+        state.letters[state.currentCategoryIndex] = newLetter;
+
+        // Clear all submissions
+        state.submissions = {};
+
+        // Reset submission start time
+        state.submissionStartTime = Date.now();
+
+        session.gameState = state;
+        broadcastSessionState(session, io);
+
+        // Restart submission timer
+        startSubmissionTimer(session, io);
+
+        console.log(`Letter rerolled from ${currentLetter} to ${newLetter}`);
+        break;
+      }
+
       case 'challenge-answer': {
         if (state.phase !== 'revealing') return;
         if (state.currentRevealIndex < 0 || state.currentRevealIndex >= state.revealOrder.length) return;

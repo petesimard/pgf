@@ -166,13 +166,22 @@ function ClientView({ player, players, gameState, sendAction }: ClientViewProps)
 
           {/* GM Controls */}
           {isGameMaster && (
-            <Button
-              onClick={() => sendAction({ type: 'submission-complete' })}
-              className="w-full"
-              variant="secondary"
-            >
-              End Submission Early
-            </Button>
+            <div className="space-y-2">
+              <Button
+                onClick={() => sendAction({ type: 'submission-complete' })}
+                className="w-full"
+                variant="secondary"
+              >
+                End Submission Early
+              </Button>
+              <Button
+                onClick={() => sendAction({ type: 'reroll-letter' })}
+                className="w-full"
+                variant="outline"
+              >
+                🎲 Reroll Letter
+              </Button>
+            </div>
           )}
         </div>
       </ClientGameScene>
