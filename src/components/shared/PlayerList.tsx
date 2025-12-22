@@ -1,5 +1,5 @@
 import type { Player } from '../../types';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
@@ -34,6 +34,7 @@ function PlayerList({ players, showScores = false, scores = {} }: PlayerListProp
             )}
           >
             <Avatar className="w-8 h-8 sm:w-9 sm:h-9 lg:w-10 lg:h-10 border-2 border-foreground bg-primary">
+              <AvatarImage src={player.avatar} alt={player.name} />
               <AvatarFallback className="font-extrabold text-base sm:text-lg text-foreground">
                 {player.name.charAt(0).toUpperCase()}
               </AvatarFallback>

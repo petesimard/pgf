@@ -202,7 +202,7 @@ io.on('connection', (socket: GameSocket) => {
   });
 
   // Player joins session
-  socket.on('player:join', ({ sessionId, name, deviceId }, callback) => {
+  socket.on('player:join', ({ sessionId, name, avatar, deviceId }, callback) => {
     const session = sessions.get(sessionId.toUpperCase());
     if (!session) {
       callback({ success: false, error: 'Session not found' });
@@ -242,6 +242,7 @@ io.on('connection', (socket: GameSocket) => {
     const player: Player = {
       id: playerId,
       name: name.trim().slice(0, 20),
+      avatar,
       isGameMaster: isFirstPlayer,
       connected: true,
       deviceId,

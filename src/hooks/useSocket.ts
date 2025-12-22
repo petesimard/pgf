@@ -24,7 +24,7 @@ interface UseSocketReturn {
   playerId: string | null;
   error: string | null;
   createSession: () => Promise<string>;
-  joinSession: (sessionId: string, name: string) => Promise<string>;
+  joinSession: (sessionId: string, name: string, avatar: string) => Promise<string>;
   selectGame: (gameId: string) => void;
   startGame: () => void;
   endGame: () => void;
@@ -97,7 +97,7 @@ export function useSocket(): UseSocketReturn {
     });
   }, []);
 
-  const joinSession = useCallback((sessionId: string, name: string): Promise<string> => {
+  const joinSession = useCallback((sessionId: string, name: string, avatar: string): Promise<string> => {
     return new Promise((resolve, reject) => {
       if (!socketRef.current) {
         reject(new Error('Not connected'));
@@ -105,7 +105,7 @@ export function useSocket(): UseSocketReturn {
       }
 
       const deviceId = getDeviceId();
-      socketRef.current.emit('player:join', { sessionId, name, deviceId }, (response) => {
+      socketRef.current.emit('player:join', { sessionId, name, avatar, deviceId }, (response) => {
         if (response.success && response.playerId) {
           setPlayerId(response.playerId);
           resolve(response.playerId);

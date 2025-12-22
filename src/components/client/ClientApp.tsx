@@ -6,6 +6,7 @@ import ClientLobby from './ClientLobby';
 import ClientGameContainer from './ClientGameContainer';
 
 const PLAYER_NAME_KEY = 'playerName';
+const PLAYER_AVATAR_KEY = 'playerAvatar';
 
 function ClientApp() {
   const { sessionId } = useParams<{ sessionId: string }>();
@@ -14,13 +15,14 @@ function ClientApp() {
   const [hasJoined, setHasJoined] = useState(false);
   const [autoJoining, setAutoJoining] = useState(false);
 
-  // Auto-join with saved name when connected
+  // Auto-join with saved name and avatar when connected
   useEffect(() => {
     if (connected && !hasJoined && !autoJoining && sessionId) {
       const savedName = localStorage.getItem(PLAYER_NAME_KEY);
-      if (savedName) {
+      const savedAvatar = localStorage.getItem(PLAYER_AVATAR_KEY);
+      if (savedName && savedAvatar) {
         setAutoJoining(true);
-        joinSession(sessionId, savedName)
+        joinSession(sessionId, savedName, savedAvatar)
           .then(() => {
             setHasJoined(true);
             setJoinError(null);
@@ -45,14 +47,14 @@ function ClientApp() {
     );
   }
 
-  const handleJoin = async (name: string) => {
+  const handleJoin = async (name: string, avatar: string) => {
     if (!sessionId) {
       setJoinError('Invalid session');
       return;
     }
 
     try {
-      await joinSession(sessionId, name);
+      await joinSession(sessionId, name, avatar);
       setHasJoined(true);
       setJoinError(null);
     } catch (err) {
