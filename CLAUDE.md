@@ -17,38 +17,16 @@ npm run dev:client    # Client only (Vite)
 npm run build         # TypeScript compilation + Vite build
 npm start             # Production server
 npm run generate:game # Interactive CLI to generate new game files
-npm test              # Run E2E tests with Playwright (headless)
-npm run test:headed   # Run tests with visible browser
-npm run test:ui       # Interactive Playwright UI
-npm run test:debug    # Debug mode for tests
 ```
 
 ## Testing
 
-### Automated E2E Tests (Playwright)
-
-E2E tests use Playwright to simulate the full multi-device experience:
-
-- Tests automatically detect if dev servers are running on ports 3000/5173
-- If servers are already running, tests reuse them (faster, no shutdown)
-- If servers aren't running, tests start them and stop them after completion
-- Simulates TV display and multiple phone clients in separate browser contexts
-- Tests multi-client join flow, Game Master controls, and game start
-- Tests localStorage persistence and auto-join functionality
-- Tests located in `tests/` directory
-
-**Important test selectors** (if adding new tests):
-- Client lobby: `.gm-badge`, `.game-selection`, `.waiting`
-- Game selection: `.game-option` (not buttons)
-- Start button: `button:has-text("Start [Game Name]")` (includes game name)
-- Buzz Race game: `.buzz-game-tv` (TV), `.buzz-client` and `.buzz-button` (phone)
-
 ### Interactive Testing with Claude Chrome Extension
 
-The Claude Chrome extension is an excellent tool for testing the multi-device experience during development. Claude can navigate to the TV view, open additional tabs for phone clients, and interact with the UI to verify functionality.
+The Claude Chrome extension is an excellent tool for testing the multi-device experience during development. Claude can navigate to the TV view, open additional tabs for phone clients, and interact with the UI to verify functionality. Assume the dev server is already running.
 
 **Setup**:
-1. User starts dev server: `npm run dev`
+1. User already started dev server
 2. User asks Claude to navigate to `http://localhost:5173/tv`
 3. Claude can then open additional tabs simulating phone clients joining the session
 4. Claude can interact with the UI, take screenshots, read console logs, and verify functionality
@@ -69,13 +47,6 @@ The Claude Chrome extension is an excellent tool for testing the multi-device ex
 4. Claude: Opens new tab, joins session, shows both TV and client views
 5. User: "Select Buzz Race and start the game"
 6. Claude: Clicks game option, starts game, verifies game state
-
-**Benefits over physical device testing**:
-- No need for physical phones/tablets during development
-- Faster iteration: instant screenshots and feedback
-- Easy debugging: direct access to console logs and network tab
-- Multi-tab coordination: manage TV + multiple clients simultaneously
-- State verification: inspect DOM and game state in real-time
 
 ## Network Configuration
 

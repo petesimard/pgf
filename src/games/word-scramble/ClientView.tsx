@@ -1,278 +1,479 @@
 import { useState, useEffect } from 'react';
-import ClientGameScene from '@/components/shared/ClientGameScene';
-import Countdown from '@/components/shared/Countdown';
 import type { ClientViewProps } from '../types';
-import { Button } from '@/components/ui/button';
+import ClientGameScene from '@/components/shared/ClientGameScene';
 import { Card } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import Countdown from '@/components/shared/Countdown';
 import { cn } from '@/lib/utils';
 
-interface WordScrambleState {
-  letter: string;
-  categories: string[];
-  roundNumber: number;
-  phase: 'playing' | 'reviewing' | 'results';
-  startTime: number;
-  playerAnswers: Record<string, Record<number, string>>;
-  scores: Record<string, number>;
-  roundScores: Record<string, number>;
+interface PlayerAnswer {
+  playerId: string;
+  playerName: string;
+  answer: string;
+  wasAccepted: boolean;
+  pointsEarned: number;
+  wasChallenged: boolean;
+  challengeVotes?: {
+    up: number;
+    down: number;
+    rejected: boolean;
+  };
 }
 
-const ROUND_TIME_SECONDS = 90;
+interface CategoryResult {
+  categoryIndex: number;
+  letter: string;
+  category: string;
+  answers: PlayerAnswer[];
+}
 
-function ClientView({ player, players, gameState, sendAction, isGameMaster }: ClientViewProps) {
+interface WordScrambleState {
+  letters: string[];
+  categories: string[];
+  currentCategoryIndex: number;
+  roundNumber: number;
+  phase: 'submitting' | 'revealing' | 'voting' | 'results';
+  submissionStartTime: number;
+  submissions: Record<string, string>;
+  revealOrder: string[];
+  currentRevealIndex: number;
+  revealStartTime: number;
+  challengedPlayerId: string | null;
+  challengedAnswer: string | null;
+  votes: Record<string, 'up' | 'down'>;
+  votingStartTime: number;
+  categoryHistory: CategoryResult[];
+  scores: Record<string, number>;
+}
+
+const SUBMISSION_TIME_SECONDS = 20;
+const REVEAL_TIME_SECONDS = 5;
+const VOTING_TIME_SECONDS = 10;
+
+function ClientView({ player, players, gameState, sendAction }: ClientViewProps) {
   const state = gameState as WordScrambleState;
-  const [answers, setAnswers] = useState<Record<number, string>>({});
-  const [timeRemaining, setTimeRemaining] = useState(ROUND_TIME_SECONDS);
+  const [answer, setAnswer] = useState('');
+  const [timeRemaining, setTimeRemaining] = useState(0);
 
-  // Initialize answers from server state
-  useEffect(() => {
-    if (state?.playerAnswers[player.id]) {
-      setAnswers(state.playerAnswers[player.id]);
-    } else {
-      setAnswers({});
-    }
-  }, [state?.roundNumber, player.id, state?.playerAnswers]);
+  const isGameMaster = player.isGameMaster;
 
-  // Countdown timer
+  // Countdown timer - different for each phase
   useEffect(() => {
-    if (!state || state.phase !== 'playing') return;
+    if (!state) return;
 
     const interval = setInterval(() => {
-      const elapsed = Math.floor((Date.now() - state.startTime) / 1000);
-      const remaining = Math.max(0, ROUND_TIME_SECONDS - elapsed);
-      setTimeRemaining(remaining);
+      let elapsed = 0;
+      let duration = 0;
 
-      // Auto-trigger time up when timer reaches 0 (only for game master)
-      if (remaining === 0 && isGameMaster) {
-        sendAction({ type: 'time-up' });
+      if (state.phase === 'submitting') {
+        elapsed = Math.floor((Date.now() - state.submissionStartTime) / 1000);
+        duration = SUBMISSION_TIME_SECONDS;
+      } else if (state.phase === 'revealing') {
+        elapsed = Math.floor((Date.now() - state.revealStartTime) / 1000);
+        duration = REVEAL_TIME_SECONDS;
+      } else if (state.phase === 'voting') {
+        elapsed = Math.floor((Date.now() - state.votingStartTime) / 1000);
+        duration = VOTING_TIME_SECONDS;
       }
+
+      const remaining = Math.max(0, duration - elapsed);
+      setTimeRemaining(remaining);
     }, 100);
 
     return () => clearInterval(interval);
-  }, [state?.startTime, state?.phase, isGameMaster, sendAction]);
+  }, [state?.phase, state?.submissionStartTime, state?.revealStartTime, state?.votingStartTime]);
 
-  if (!state) {
+  // Reset answer field when new category starts
+  useEffect(() => {
+    if (state?.phase === 'submitting') {
+      setAnswer('');
+    }
+  }, [state?.currentCategoryIndex, state?.phase]);
+
+  if (!state || !state.letters || !state.categories) {
     return (
-      <div className="flex-1 flex flex-col p-4">
-        <div className="text-center p-8 bg-card rounded-2xl border-3 shadow-playful">
-          <div className="w-12 h-12 border-[4px] border-muted border-t-primary rounded-full animate-spin mx-auto mb-4"></div>
-          <h2 className="text-muted-foreground font-extrabold">Loading game...</h2>
-        </div>
-      </div>
-    );
-  }
-
-  const handleAnswerChange = (categoryIndex: number, value: string) => {
-    const newAnswers = { ...answers, [categoryIndex]: value };
-    setAnswers(newAnswers);
-
-    // Send the answer to server
-    sendAction({
-      type: 'submit-answer',
-      payload: { categoryIndex, answer: value }
-    });
-  };
-
-  const handleNextRound = () => {
-    sendAction({ type: 'next-round' });
-  };
-
-  const handleShowResults = () => {
-    sendAction({ type: 'show-results' });
-  };
-
-  const handleTimeUp = () => {
-    sendAction({ type: 'time-up' });
-  };
-
-  if (state.phase === 'playing') {
-    return (
-      <ClientGameScene players={players} scores={state.scores}>
-        {/* Timer and Letter */}
-        <Card className="p-4 mb-4 bg-card">
-          <div className="flex justify-between items-center mb-2">
-            <div className="text-sm text-muted-foreground">Round {state.roundNumber}</div>
-            <Countdown timeRemaining={timeRemaining} size="sm" />
-          </div>
+      <ClientGameScene players={players} scores={{}}>
+        <Card className="p-6">
           <div className="text-center">
-            <div className="text-sm text-muted-foreground mb-1">Letter:</div>
-            <div className="text-6xl font-extrabold bg-gradient-to-r from-primary to-[#a855f7] bg-clip-text text-transparent">
-              {state.letter}
-            </div>
+            <div className="w-8 h-8 border-4 border-muted border-t-primary rounded-full animate-spin mx-auto mb-4"></div>
+            <div className="text-muted-foreground">Loading...</div>
           </div>
         </Card>
+      </ClientGameScene>
+    );
+  }
 
-        {/* Category Inputs */}
-        <div className="space-y-3 mb-4 flex-1 overflow-y-auto">
-          {state.categories.map((category, idx) => (
-            <Card key={idx} className="p-3 bg-card">
-              <div className="text-sm font-semibold text-muted-foreground mb-2">
-                {idx + 1}. {category}
+  const currentLetter = state.letters[state.currentCategoryIndex];
+  const currentCategory = state.categories[state.currentCategoryIndex];
+  const myAnswer = state.submissions[player.id];
+  const hasSubmitted = myAnswer !== undefined;
+
+  // Submitting Phase
+  if (state.phase === 'submitting') {
+    return (
+      <ClientGameScene players={players} scores={state.scores}>
+        <div className="space-y-4">
+          <Card className="p-6">
+            <div className="space-y-4">
+              {/* Timer */}
+              <Countdown timeRemaining={timeRemaining} size="sm" />
+
+              {/* Category Info */}
+              <div className="text-center">
+                <div className="text-sm text-muted-foreground mb-1">
+                  Category {state.currentCategoryIndex + 1} of {state.categories.length}
+                </div>
+                <div className="text-2xl font-bold text-foreground mb-2">
+                  {currentCategory}
+                </div>
+                <div className="text-5xl font-extrabold bg-gradient-to-r from-primary via-[#a855f7] to-[#ec4899] bg-clip-text text-transparent">
+                  {currentLetter}
+                </div>
               </div>
-              <Input
-                type="text"
-                placeholder={`Type answer starting with ${state.letter}...`}
-                value={answers[idx] || ''}
-                onChange={(e) => handleAnswerChange(idx, e.target.value)}
-                className="text-lg font-semibold"
-                autoComplete="off"
-              />
-            </Card>
-          ))}
-        </div>
 
-        {/* Game Master Controls */}
-        {isGameMaster && (
-          <div className="mt-4">
-            <Button
-              onClick={handleTimeUp}
-              variant="destructive"
-              className="w-full"
-            >
-              End Round Early
-            </Button>
-          </div>
-        )}
-      </ClientGameScene>
-    );
-  }
-
-  if (state.phase === 'reviewing') {
-    const myRoundScore = state.roundScores[player.id] || 0;
-
-    return (
-      <ClientGameScene players={players} scores={state.scores}>
-        <Card className="p-6 mb-4 bg-card text-center">
-          <div className="text-lg text-muted-foreground mb-2">
-            Round {state.roundNumber} Complete!
-          </div>
-          <div className="text-5xl font-extrabold text-primary mb-2">
-            +{myRoundScore}
-          </div>
-          <div className="text-sm text-muted-foreground">
-            points this round
-          </div>
-        </Card>
-
-        {/* My Answers Review */}
-        <div className="space-y-2 mb-4 flex-1 overflow-y-auto">
-          <div className="text-sm font-semibold text-muted-foreground mb-2">Your Answers:</div>
-          {state.categories.map((category, idx) => {
-            const answer = state.playerAnswers[player.id]?.[idx];
-            const hasAnswer = answer && answer.trim();
-            const startsWithLetter = hasAnswer && answer.trim().toLowerCase().startsWith(state.letter.toLowerCase());
-
-            // Check if answer is unique
-            const normalizedAnswer = hasAnswer ? answer.trim().toLowerCase() : '';
-            const duplicateCount = normalizedAnswer ?
-              Object.values(state.playerAnswers).filter(
-                answers => answers[idx]?.trim().toLowerCase() === normalizedAnswer
-              ).length : 0;
-            const isUnique = duplicateCount === 1;
-
-            return (
-              <Card
-                key={idx}
-                className={cn(
-                  "p-3",
-                  !hasAnswer && "bg-muted/20",
-                  hasAnswer && !startsWithLetter && "bg-destructive/20 border-destructive",
-                  hasAnswer && startsWithLetter && !isUnique && "bg-warning/20 border-warning",
-                  hasAnswer && startsWithLetter && isUnique && "bg-success/20 border-success"
+              {/* Input */}
+              <div className="space-y-2">
+                <form onSubmit={(e) => {
+                  e.preventDefault();
+                  if (answer.trim()) {
+                    sendAction({ type: 'submit-answer', payload: { answer: answer.trim() } });
+                  }
+                }}>
+                  <Input
+                    placeholder={`Answer starting with ${currentLetter}...`}
+                    value={answer}
+                    onChange={(e) => setAnswer(e.target.value)}
+                    disabled={hasSubmitted}
+                    className="text-lg"
+                    autoFocus
+                  />
+                </form>
+                {hasSubmitted && (
+                  <div className="text-sm text-success font-semibold text-center">
+                    ✓ Answer submitted: {myAnswer}
+                  </div>
                 )}
-              >
-                <div className="text-xs text-muted-foreground mb-1">
-                  {idx + 1}. {category}
-                </div>
-                <div className="text-base font-bold">
-                  {hasAnswer ? answer : '(no answer)'}
-                </div>
-                <div className="text-xs mt-1 text-muted-foreground">
-                  {hasAnswer && startsWithLetter && isUnique && '✓ +1 point'}
-                  {hasAnswer && startsWithLetter && !isUnique && '⚠ duplicate (0 points)'}
-                  {hasAnswer && !startsWithLetter && '✗ invalid letter (0 points)'}
-                  {!hasAnswer && '— no answer'}
-                </div>
-              </Card>
-            );
-          })}
-        </div>
+              </div>
+            </div>
+          </Card>
 
-        {/* Game Master Controls */}
-        {isGameMaster && (
-          <div className="space-y-2 mt-4">
+          {/* GM Controls */}
+          {isGameMaster && (
             <Button
-              onClick={handleShowResults}
+              onClick={() => sendAction({ type: 'submission-complete' })}
+              className="w-full"
               variant="secondary"
-              className="w-full"
             >
-              Show Final Scores
+              End Submission Early
             </Button>
-            <Button
-              onClick={handleNextRound}
-              className="w-full"
-            >
-              Start Next Round
-            </Button>
-          </div>
-        )}
+          )}
+        </div>
       </ClientGameScene>
     );
   }
 
-  if (state.phase === 'results') {
+  // Revealing Phase
+  if (state.phase === 'revealing') {
+    const isAllRevealed = state.currentRevealIndex >= state.revealOrder.length;
+    const currentPlayerId = state.revealOrder[state.currentRevealIndex];
+    const currentPlayer = players.find(p => p.id === currentPlayerId);
+    const currentAnswer = state.submissions[currentPlayerId];
+    const isMyAnswer = currentPlayerId === player.id;
+    const isLastCategory = state.currentCategoryIndex >= state.categories.length - 1;
+
+    if (isAllRevealed || state.revealOrder.length === 0) {
+      return (
+        <ClientGameScene players={players} scores={state.scores}>
+          <div className="space-y-4">
+            <Card className="p-6">
+              <div className="text-center space-y-4">
+                <div className="text-2xl font-bold text-foreground">
+                  All Answers Revealed!
+                </div>
+                <div className="text-muted-foreground">
+                  Category {state.currentCategoryIndex + 1} of {state.categories.length}
+                </div>
+              </div>
+            </Card>
+
+            {/* Show my answer */}
+            <Card className="p-4 bg-primary/10">
+              <div className="text-sm text-muted-foreground mb-1">Your answer:</div>
+              <div className="text-xl font-bold">{myAnswer || '(no answer)'}</div>
+            </Card>
+
+            {/* GM Controls */}
+            {isGameMaster && (
+              <div className="space-y-2">
+                {!isLastCategory ? (
+                  <Button
+                    onClick={() => sendAction({ type: 'next-category' })}
+                    className="w-full"
+                  >
+                    Next Category ({state.currentCategoryIndex + 2}/{state.categories.length})
+                  </Button>
+                ) : (
+                  <Button
+                    onClick={() => sendAction({ type: 'show-results' })}
+                    className="w-full"
+                  >
+                    Show Final Results
+                  </Button>
+                )}
+              </div>
+            )}
+
+            {!isGameMaster && (
+              <div className="text-center text-muted-foreground text-sm">
+                Waiting for Game Master...
+              </div>
+            )}
+          </div>
+        </ClientGameScene>
+      );
+    }
+
     return (
       <ClientGameScene players={players} scores={state.scores}>
-        <Card className="p-6 mb-4 bg-card text-center">
-          <div className="text-2xl font-bold text-foreground mb-4">
-            Final Standings
-          </div>
-          <div className="space-y-2">
-            {Object.entries(state.scores)
-              .sort(([, a], [, b]) => b - a)
-              .map(([playerId, score], index) => {
-                const p = players.find(player => player.id === playerId);
-                const isMe = playerId === player.id;
-                return (
-                  <div
-                    key={playerId}
-                    className={cn(
-                      "flex justify-between items-center p-3 rounded-lg",
-                      isMe ? "bg-primary/20 border-2 border-primary" : "bg-muted/20"
-                    )}
-                  >
-                    <div className="flex items-center gap-2">
-                      <span className="text-lg font-bold text-muted-foreground w-6">
-                        {index + 1}.
-                      </span>
+        <div className="space-y-4">
+          <Card className="p-6">
+            <div className="space-y-4">
+              {/* Progress */}
+              <div className="text-center text-sm text-muted-foreground">
+                Revealing {state.currentRevealIndex + 1} of {state.revealOrder.length}
+              </div>
+
+              {/* Category */}
+              <div className="text-center text-lg text-muted-foreground">
+                {currentCategory} ({currentLetter})
+              </div>
+
+              {/* Current Reveal */}
+              <div className={cn(
+                "p-6 rounded-lg border-2 text-center",
+                isMyAnswer && "bg-primary/20 border-primary"
+              )}>
+                <div className="text-xl font-bold mb-2">{currentPlayer?.name}</div>
+                <div className="text-3xl font-extrabold">{currentAnswer}</div>
+              </div>
+
+              {/* Timer */}
+              <div className="text-center">
+                <Countdown timeRemaining={timeRemaining} size="sm" />
+                <div className="text-xs text-muted-foreground mt-1">
+                  Auto-advancing...
+                </div>
+              </div>
+            </div>
+          </Card>
+
+          {/* Challenge Button */}
+          {!isMyAnswer && (
+            <Button
+              onClick={() => sendAction({ type: 'challenge-answer' })}
+              className="w-full"
+              variant="destructive"
+              size="lg"
+            >
+              Challenge
+            </Button>
+          )}
+
+          {/* GM Controls */}
+          {isGameMaster && (
+            <Button
+              onClick={() => sendAction({ type: 'next-reveal' })}
+              className="w-full"
+              variant="secondary"
+            >
+              Next
+            </Button>
+          )}
+
+          {/* Show my answer */}
+          {!isMyAnswer && (
+            <Card className="p-3 bg-muted/20">
+              <div className="text-xs text-muted-foreground mb-1">Your answer:</div>
+              <div className="text-lg font-semibold">{myAnswer || '(no answer)'}</div>
+            </Card>
+          )}
+        </div>
+      </ClientGameScene>
+    );
+  }
+
+  // Voting Phase
+  if (state.phase === 'voting') {
+    const challengedPlayer = players.find(p => p.id === state.challengedPlayerId);
+    const isChallengedPlayer = state.challengedPlayerId === player.id;
+    const hasVoted = state.votes[player.id] !== undefined;
+    const myVote = state.votes[player.id];
+    const eligibleVoters = players.filter(p => p.isActive && p.id !== state.challengedPlayerId);
+    const voteCount = Object.keys(state.votes).length;
+
+    return (
+      <ClientGameScene players={players} scores={state.scores}>
+        <div className="space-y-4">
+          <Card className="p-6">
+            <div className="space-y-4">
+              {/* Challenge Header */}
+              <div className="text-center">
+                <div className="text-2xl font-extrabold text-destructive mb-4">
+                  CHALLENGE!
+                </div>
+                <div className="text-sm text-muted-foreground mb-2">
+                  {currentCategory} ({currentLetter})
+                </div>
+              </div>
+
+              {/* Challenged Answer */}
+              <div className="p-6 bg-destructive/10 rounded-lg border-2 border-destructive text-center">
+                <div className="text-xl font-bold mb-2">{challengedPlayer?.name}</div>
+                <div className="text-3xl font-extrabold">"{state.challengedAnswer}"</div>
+              </div>
+
+              {/* Timer */}
+              <div className="text-center">
+                <Countdown timeRemaining={timeRemaining} size="md" />
+              </div>
+
+              {/* Vote Status */}
+              <div className="text-center text-sm text-muted-foreground">
+                {voteCount} / {eligibleVoters.length} voted
+              </div>
+            </div>
+          </Card>
+
+          {/* Voting Buttons */}
+          {!isChallengedPlayer && !hasVoted && (
+            <div className="grid grid-cols-2 gap-4">
+              <Button
+                onClick={() => sendAction({ type: 'vote', payload: { vote: 'up' } })}
+                className="h-20 text-3xl"
+                variant="default"
+              >
+                👍
+                <span className="ml-2 text-lg">Accept</span>
+              </Button>
+              <Button
+                onClick={() => sendAction({ type: 'vote', payload: { vote: 'down' } })}
+                className="h-20 text-3xl"
+                variant="destructive"
+              >
+                👎
+                <span className="ml-2 text-lg">Reject</span>
+              </Button>
+            </div>
+          )}
+
+          {hasVoted && (
+            <Card className="p-4 bg-success/20 border-success">
+              <div className="text-center font-semibold">
+                You voted: {myVote === 'up' ? '👍 Accept' : '👎 Reject'}
+              </div>
+              <div className="text-center text-sm text-muted-foreground mt-1">
+                Waiting for other votes...
+              </div>
+            </Card>
+          )}
+
+          {isChallengedPlayer && (
+            <Card className="p-4 bg-warning/20 border-warning">
+              <div className="text-center font-semibold text-foreground">
+                This is your answer!
+              </div>
+              <div className="text-center text-sm text-muted-foreground mt-1">
+                You cannot vote on your own answer
+              </div>
+            </Card>
+          )}
+        </div>
+      </ClientGameScene>
+    );
+  }
+
+  // Results Phase
+  if (state.phase === 'results') {
+    const myScore = state.scores[player.id] || 0;
+    const sortedPlayers = players
+      .filter(p => p.isActive)
+      .map(p => ({
+        player: p,
+        score: state.scores[p.id] || 0
+      }))
+      .sort((a, b) => b.score - a.score);
+
+    const myRank = sortedPlayers.findIndex(p => p.player.id === player.id) + 1;
+
+    return (
+      <ClientGameScene players={players} scores={state.scores}>
+        <div className="space-y-4">
+          {/* My Score */}
+          <Card className="p-6 bg-primary/20 border-primary">
+            <div className="text-center">
+              <div className="text-sm text-muted-foreground mb-1">Your Score</div>
+              <div className="text-5xl font-extrabold text-primary mb-2">{myScore}</div>
+              <div className="text-lg font-semibold">
+                {myRank === 1 ? '🏆 1st Place!' :
+                 myRank === 2 ? '🥈 2nd Place' :
+                 myRank === 3 ? '🥉 3rd Place' :
+                 `${myRank}th Place`}
+              </div>
+            </div>
+          </Card>
+
+          {/* Category History */}
+          <div className="space-y-3">
+            <div className="text-lg font-bold text-center">Your Answers</div>
+            {state.categoryHistory.map((category) => {
+              const myAnswerResult = category.answers.find(a => a.playerId === player.id);
+              return (
+                <Card key={category.categoryIndex} className="p-4">
+                  <div className="space-y-2">
+                    <div className="text-sm font-semibold text-muted-foreground">
+                      {category.category} ({category.letter})
+                    </div>
+                    <div className="text-xl font-bold">
+                      {myAnswerResult?.answer || '(no answer)'}
+                    </div>
+                    <div className="flex items-center justify-between text-sm">
                       <span className={cn(
                         "font-semibold",
-                        isMe && "text-primary"
+                        myAnswerResult?.wasAccepted && myAnswerResult.pointsEarned > 0 && "text-success",
+                        myAnswerResult?.wasAccepted && myAnswerResult.pointsEarned === 0 && "text-warning",
+                        !myAnswerResult?.wasAccepted && "text-destructive"
                       )}>
-                        {p?.name}
+                        {myAnswerResult?.wasChallenged && '⚠ Challenged '}
+                        {myAnswerResult?.wasAccepted && myAnswerResult.pointsEarned > 0 && `+${myAnswerResult.pointsEarned} pt`}
+                        {myAnswerResult?.wasAccepted && myAnswerResult.pointsEarned === 0 && 'Duplicate'}
+                        {!myAnswerResult?.wasAccepted && 'Rejected'}
+                        {!myAnswerResult && 'No answer'}
                       </span>
                     </div>
-                    <span className="text-xl font-bold text-primary">
-                      {score}
-                    </span>
                   </div>
-                );
-              })}
+                </Card>
+              );
+            })}
           </div>
-        </Card>
 
-        {/* Game Master Controls */}
-        {isGameMaster && (
-          <div className="mt-4">
+          {/* GM Controls */}
+          {isGameMaster && (
             <Button
-              onClick={handleNextRound}
+              onClick={() => sendAction({ type: 'next-round' })}
               className="w-full"
+              size="lg"
             >
               Start Next Round
             </Button>
-          </div>
-        )}
+          )}
+
+          {!isGameMaster && (
+            <div className="text-center text-muted-foreground text-sm">
+              Waiting for Game Master...
+            </div>
+          )}
+        </div>
       </ClientGameScene>
     );
   }
