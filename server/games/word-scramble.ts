@@ -1,5 +1,5 @@
 import type { GameHandler, ServerGameSession, GameServer } from '../types.js';
-import { TestCategoryProvider } from './word-scramble/testCategoryProvider.js';
+import { StaticCategoryProvider } from './word-scramble/staticCategoryProvider.js';
 import { CountdownTimer, broadcastSessionState as baseBroadcastSessionState } from './utils.js';
 
 const LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
@@ -83,7 +83,7 @@ let revealTimer: NodeJS.Timeout | null = null;
 let votingTimer: CountdownTimer | null = null;
 let challengeResultTimer: NodeJS.Timeout | null = null;
 
-const categoryProvider = new TestCategoryProvider();
+const categoryProvider = new StaticCategoryProvider();
 
 /**
  * Select N unique random letters
