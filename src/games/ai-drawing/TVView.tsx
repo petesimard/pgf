@@ -87,9 +87,9 @@ function TVView({ players, gameState, socket }: TVViewProps) {
 
   if (!state) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center p-8 bg-background">
-        <div className="text-center p-8 bg-card rounded-2xl border-3 shadow-playful">
-          <div className="w-12 h-12 border-[4px] border-muted border-t-primary rounded-full animate-spin mx-auto mb-4"></div>
+      <div className="min-h-screen flex flex-col items-center justify-center p-6 bg-background">
+        <div className="text-center p-6 bg-card rounded-2xl border-3 shadow-playful">
+          <div className="w-10 h-10 border-[3px] border-muted border-t-primary rounded-full animate-spin mx-auto mb-3"></div>
           <h2 className="text-muted-foreground font-extrabold">Loading game...</h2>
         </div>
       </div>
@@ -101,11 +101,11 @@ function TVView({ players, gameState, socket }: TVViewProps) {
 
   if (state.phase === 'judging') {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center p-8 bg-background">
-        <Card className="text-center p-16 bg-card rounded-2xl max-w-2xl">
-          <div className="w-24 h-24 border-[6px] border-muted border-t-primary rounded-full animate-spin mx-auto mb-8"></div>
-          <div className="text-6xl font-bold text-primary mb-4">AI is Judging...</div>
-          <div className="text-2xl text-muted-foreground">
+      <div className="min-h-screen flex flex-col items-center justify-center p-6 bg-background">
+        <Card className="text-center p-12 bg-card rounded-2xl max-w-2xl">
+          <div className="w-20 h-20 border-[5px] border-muted border-t-primary rounded-full animate-spin mx-auto mb-6"></div>
+          <div className="text-5xl font-bold text-primary mb-3">AI is Judging...</div>
+          <div className="text-xl text-muted-foreground">
             Analyzing all the masterpieces and ranking them
           </div>
         </Card>
@@ -120,10 +120,10 @@ function TVView({ players, gameState, socket }: TVViewProps) {
     // Show waiting message if no results revealed yet
     if (currentIndex < 0) {
       return (
-        <div className="min-h-screen flex flex-col items-center justify-center p-8 bg-background">
-          <Card className="text-center p-16 bg-card rounded-2xl max-w-2xl">
-            <div className="text-6xl font-bold text-primary mb-4">Results are ready!</div>
-            <div className="text-2xl text-muted-foreground">
+        <div className="min-h-screen flex flex-col items-center justify-center p-6 bg-background">
+          <Card className="text-center p-12 bg-card rounded-2xl max-w-2xl">
+            <div className="text-5xl font-bold text-primary mb-3">Results are ready!</div>
+            <div className="text-xl text-muted-foreground">
               Preparing to reveal the rankings...
             </div>
           </Card>
@@ -138,9 +138,9 @@ function TVView({ players, gameState, socket }: TVViewProps) {
     // Safety check - if still no result, show waiting message
     if (!currentResult) {
       return (
-        <div className="min-h-screen flex flex-col items-center justify-center p-8 bg-background">
-          <Card className="text-center p-16 bg-card rounded-2xl max-w-2xl">
-            <div className="text-6xl font-bold text-primary mb-4">Loading results...</div>
+        <div className="min-h-screen flex flex-col items-center justify-center p-6 bg-background">
+          <Card className="text-center p-12 bg-card rounded-2xl max-w-2xl">
+            <div className="text-5xl font-bold text-primary mb-3">Loading results...</div>
           </Card>
         </div>
       );
@@ -149,15 +149,15 @@ function TVView({ players, gameState, socket }: TVViewProps) {
     const resultIndex = safeIndex; // 0-based index for styling
 
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center p-8 bg-background">
-        <div className="text-center mb-8">
-          <h1 className="text-7xl font-extrabold bg-gradient-to-r from-primary via-[#a855f7] to-[#ec4899] bg-clip-text text-transparent mb-4">
+      <div className="min-h-screen flex flex-col items-center justify-center p-6 bg-background">
+        <div className="text-center mb-6">
+          <h1 className="text-6xl font-extrabold bg-gradient-to-r from-primary via-[#a855f7] to-[#ec4899] bg-clip-text text-transparent mb-3">
             🏆 {allRevealed ? 'Final Results' : 'Revealing Results'} 🏆
           </h1>
-          <div className="text-3xl text-muted-foreground mb-2">
+          <div className="text-2xl text-muted-foreground mb-1.5">
             The word was: <span className="font-bold text-primary">{state.word}</span>
           </div>
-          <div className="text-2xl text-muted-foreground">
+          <div className="text-xl text-muted-foreground">
             {allRevealed
               ? 'All results revealed!'
               : `Revealing ${currentIndex + 1} of ${state.results.length}`}
@@ -166,7 +166,7 @@ function TVView({ players, gameState, socket }: TVViewProps) {
 
         <Card
           className={cn(
-            'p-12 rounded-2xl border-4 transform transition-all max-w-4xl w-full animate-in fade-in zoom-in duration-700',
+            'p-10 rounded-2xl border-4 transform transition-all max-w-4xl w-full animate-in fade-in zoom-in duration-700',
             resultIndex === 0 &&
               'bg-gradient-to-r from-yellow-100 to-yellow-50 border-yellow-400 shadow-2xl',
             resultIndex === 1 && 'bg-gradient-to-r from-gray-100 to-gray-50 border-gray-400 shadow-xl',
@@ -174,10 +174,10 @@ function TVView({ players, gameState, socket }: TVViewProps) {
             resultIndex > 2 && 'bg-card border-border shadow-lg'
           )}
         >
-          <div className="flex items-start gap-8">
+          <div className="flex items-start gap-6">
             <div
               className={cn(
-                'text-8xl font-extrabold w-32 h-32 flex items-center justify-center rounded-full shrink-0',
+                'text-7xl font-extrabold w-28 h-28 flex items-center justify-center rounded-full shrink-0',
                 resultIndex === 0 && 'bg-yellow-400 text-white shadow-lg',
                 resultIndex === 1 && 'bg-gray-400 text-white shadow-lg',
                 resultIndex === 2 && 'bg-amber-600 text-white shadow-lg',
@@ -187,22 +187,22 @@ function TVView({ players, gameState, socket }: TVViewProps) {
               {currentResult.rank}
             </div>
             <div className="flex-1">
-              <div className="text-6xl font-bold mb-6 text-foreground">
+              <div className="text-5xl font-bold mb-5 text-foreground">
                 {resultIndex === 0 && '🥇 '}
                 {resultIndex === 1 && '🥈 '}
                 {resultIndex === 2 && '🥉 '}
                 {currentResult.playerName}
               </div>
               {drawingImages[currentResult.playerId] && (
-                <div className="mb-6 flex justify-center">
+                <div className="mb-5 flex justify-center">
                   <img
                     src={drawingImages[currentResult.playerId]}
                     alt={`${currentResult.playerName}'s drawing`}
-                    className="max-w-lg max-h-80 rounded-lg border-2 border-border shadow-md object-contain bg-white"
+                    className="max-w-md max-h-64 rounded-lg border-2 border-border shadow-md object-contain bg-white"
                   />
                 </div>
               )}
-              <div className="text-3xl text-muted-foreground italic leading-relaxed">
+              <div className="text-2xl text-muted-foreground italic leading-relaxed">
                 "{currentResult.reason}"
               </div>
             </div>
@@ -214,11 +214,11 @@ function TVView({ players, gameState, socket }: TVViewProps) {
 
   return (
     <TVGameScene players={players} scores={{}} showScorebox={false}>
-      <div className="flex flex-col items-center justify-start h-full p-8 pt-4">
+      <div className="flex flex-col items-center justify-start h-full p-6 pt-3">
         {/* Word Display */}
-        <div className="text-center mb-8">
-          <div className="text-2xl text-muted-foreground mb-2">Draw this word:</div>
-          <div className="text-7xl font-extrabold bg-gradient-to-r from-primary via-[#a855f7] to-[#ec4899] bg-clip-text text-transparent leading-tight">
+        <div className="text-center mb-6">
+          <div className="text-xl text-muted-foreground mb-1.5">Draw this word:</div>
+          <div className="text-6xl font-extrabold bg-gradient-to-r from-primary via-[#a855f7] to-[#ec4899] bg-clip-text text-transparent leading-tight">
             {state.word}
           </div>
         </div>
@@ -228,22 +228,22 @@ function TVView({ players, gameState, socket }: TVViewProps) {
           timeRemaining={localTimeRemaining}
           label="Time Remaining"
           size="xl"
-          className="mb-8"
+          className="mb-6"
         />
 
         {/* Progress */}
-        <Card className="p-8 bg-card/80 rounded-2xl min-w-[500px]">
+        <Card className="p-6 bg-card/80 rounded-2xl min-w-[400px]">
           <div className="text-center">
-            <div className="text-3xl text-muted-foreground mb-4">Submissions</div>
-            <div className="text-6xl font-bold text-primary">
+            <div className="text-2xl text-muted-foreground mb-3">Submissions</div>
+            <div className="text-5xl font-bold text-primary">
               {submittedCount} / {totalPlayers}
             </div>
-            <div className="mt-6 grid grid-cols-2 gap-4">
+            <div className="mt-5 grid grid-cols-2 gap-3">
               {Object.values(state.drawings).map((drawing) => (
                 <div
                   key={drawing.playerId}
                   className={cn(
-                    'p-3 rounded-lg text-xl font-medium transition-all',
+                    'p-2.5 rounded-lg text-lg font-medium transition-all',
                     drawing.submitted
                       ? 'bg-success/20 text-success border-2 border-success'
                       : 'bg-muted text-muted-foreground border-2 border-transparent'

@@ -8,7 +8,6 @@ import { fileURLToPath } from 'url';
 import { hostname as getHostname } from 'os';
 import type { ServerToClientEvents, ClientToServerEvents, Player, GameDefinition } from '../src/types.js';
 import type { ServerGameSession, GameHandler, GameServer, GameSocket } from './types.js';
-import { buzzRaceGame } from './games/buzz-race.js';
 import { aiDrawingGame } from './games/ai-drawing.js';
 import { wordScrambleGame } from './games/word-scramble.js';
 
@@ -47,7 +46,6 @@ const socketToSession = new Map<string, { sessionId: string; playerId?: string; 
 const games = new Map<string, GameHandler>();
 
 // Register games
-games.set(buzzRaceGame.id, buzzRaceGame);
 games.set(aiDrawingGame.id, aiDrawingGame);
 games.set(wordScrambleGame.id, wordScrambleGame);
 

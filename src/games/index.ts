@@ -1,11 +1,9 @@
 import type { GameRegistration } from './types';
-import { buzzRaceGame } from './buzz-race';
 import { aiDrawingGame } from './ai-drawing';
 import { wordScrambleGame } from './word-scramble';
 
 // Game registry - add new games here
 const games: GameRegistration[] = [
-  buzzRaceGame,
   aiDrawingGame,
   wordScrambleGame,
 ];
