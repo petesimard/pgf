@@ -91,6 +91,14 @@ function ClientView({ player, gameState, sendAction, isGameMaster, endGame }: Cl
       return true;
     });
 
+    // Set default pen color to black after toolbar is created
+    const primaryTools = editor.toolController.getPrimaryTools();
+    primaryTools.forEach((tool) => {
+      if ('setColor' in tool && typeof tool.setColor === 'function') {
+        tool.setColor(Color4.black);
+      }
+    });
+
     // Set canvas to fill container (will be sized by CSS)
     editor.getRootElement().style.height = '100%';
     editor.getRootElement().style.width = '100%';
