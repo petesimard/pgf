@@ -4,9 +4,12 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Label } from '@/components/ui/label';
+import { Slider } from '@/components/ui/slider';
 import { cn } from '@/lib/utils';
 import HamburgerMenu from './HamburgerMenu';
 import ChangeNameDialog from './ChangeNameDialog';
+import { useState, useEffect } from 'react';
 
 interface ClientLobbyProps {
   session: GameSession;
@@ -15,15 +18,27 @@ interface ClientLobbyProps {
   onSelectGame: (gameId: string) => void;
   onStartGame: () => void;
   error: string | null;
+  setTVZoom: (zoom: number) => void;
   renamePlayer: (newName: string) => Promise<void>;
 }
 
-function ClientLobby({ session, player, games, onSelectGame, onStartGame, error, renamePlayer }: ClientLobbyProps) {
+function ClientLobby({ session, player, games, onSelectGame, onStartGame, error, setTVZoom, renamePlayer }: ClientLobbyProps) {
   const activePlayers = session.players.filter((p) => p.connected && p.isActive).length;
   const selectedGame = games.find((g) => g.id === session.currentGameId);
   const isDev = import.meta.env.DEV;
   const minPlayersRequired = isDev ? 1 : selectedGame?.minPlayers ?? 2;
   const canStart = selectedGame && activePlayers >= minPlayersRequired;
+
+  // Local state for slider to show value while dragging
+  const [localZoom, setLocalZoom] = useState(session.tvZoom);
+  const [isDragging, setIsDragging] = useState(false);
+
+  // Sync local zoom with session zoom only when not actively dragging
+  useEffect(() => {
+    if (!isDragging) {
+      setLocalZoom(session.tvZoom);
+    }
+  }, [session.tvZoom, isDragging]);
 
   return (
     <div className="min-h-screen flex flex-col p-4 max-w-lg mx-auto bg-background">
@@ -96,6 +111,29 @@ function ClientLobby({ session, player, games, onSelectGame, onStartGame, error,
                 : `Need ${minPlayersRequired - activePlayers} more player(s)`}
             </Button>
           )}
+
+          {/* TV Zoom Control */}
+          <Card className="mt-4 p-4 bg-card border-3 rounded-2xl shadow-playful">
+            <Label htmlFor="tv-zoom-lobby" className="text-sm font-bold text-foreground mb-2 block">
+              TV Zoom: {localZoom}%
+            </Label>
+            <Slider
+              id="tv-zoom-lobby"
+              min={20}
+              max={200}
+              step={5}
+              value={[localZoom]}
+              onValueChange={(value) => {
+                setIsDragging(true);
+                setLocalZoom(value[0]);
+              }}
+              onValueCommit={(value) => {
+                setIsDragging(false);
+                setTVZoom(value[0]);
+              }}
+              className="w-full"
+            />
+          </Card>
         </div>
       )}
 

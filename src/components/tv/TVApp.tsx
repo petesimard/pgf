@@ -16,6 +16,18 @@ function TVApp() {
     }
   }, [connected, sessionId, createSession]);
 
+  // Apply zoom to body element
+  useEffect(() => {
+    if (session?.tvZoom) {
+      document.body.style.zoom = `${session.tvZoom}%`;
+    }
+
+    // Cleanup function to reset zoom when component unmounts
+    return () => {
+      document.body.style.zoom = '';
+    };
+  }, [session?.tvZoom]);
+
   if (!connected) {
     return (
       <div className="tv-container">

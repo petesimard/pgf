@@ -10,10 +10,11 @@ interface ClientGameContainerProps {
   sendAction: (action: { type: string; payload?: unknown }) => void;
   endGame: () => void;
   toggleQR: (show: boolean) => void;
+  setTVZoom: (zoom: number) => void;
   renamePlayer: (newName: string) => Promise<void>;
 }
 
-function ClientGameContainer({ session, player, sendAction, endGame, toggleQR, renamePlayer }: ClientGameContainerProps) {
+function ClientGameContainer({ session, player, sendAction, endGame, toggleQR, setTVZoom, renamePlayer }: ClientGameContainerProps) {
   const game = session.currentGameId ? getGame(session.currentGameId) : null;
 
   if (!game) {
@@ -34,7 +35,9 @@ function ClientGameContainer({ session, player, sendAction, endGame, toggleQR, r
         {player.isGameMaster && (
           <GameMasterControls
             showQRCode={session.showQRCode ?? false}
+            tvZoom={session.tvZoom}
             onToggleQR={toggleQR}
+            onSetTVZoom={setTVZoom}
             onEndGame={endGame}
           />
         )}

@@ -74,6 +74,7 @@ function createSession(): ServerGameSession {
     playerLastPing: new Map(),
     deviceToPlayer: new Map(),
     showQRCode: true,
+    tvZoom: 100,
   };
   sessions.set(sessionId, session);
   return session;
@@ -88,6 +89,7 @@ function getClientSession(session: ServerGameSession) {
     gameState: session.gameState,
     status: session.status,
     showQRCode: session.showQRCode,
+    tvZoom: session.tvZoom,
   };
 }
 
@@ -164,10 +166,15 @@ io.on('connection', (socket: GameSocket) => {
   console.log('Client connected:', socket.id);
 
   // TV creates a new session
-  socket.on('session:create', (callback) => {
+  socket.on('session:create', ({ tvZoom }, callback) => {
     const session = createSession();
     session.tvSocketId = socket.id;
     socketToSession.set(socket.id, { sessionId: session.id, isTV: true });
+
+    // Set initial zoom from localStorage if provided
+    if (tvZoom !== undefined) {
+      session.tvZoom = Math.max(20, Math.min(200, tvZoom));
+    }
 
     // Join the socket.io room for this session
     socket.join(session.id);
@@ -181,7 +188,7 @@ io.on('connection', (socket: GameSocket) => {
   });
 
   // TV joins existing session (reconnect)
-  socket.on('session:join', (sessionId, callback) => {
+  socket.on('session:join', ({ sessionId, tvZoom }, callback) => {
     const session = sessions.get(sessionId);
     if (!session) {
       callback({ success: false, error: 'Session not found' });
@@ -190,6 +197,11 @@ io.on('connection', (socket: GameSocket) => {
 
     session.tvSocketId = socket.id;
     socketToSession.set(socket.id, { sessionId, isTV: true });
+
+    // Update zoom from localStorage if provided (TV reconnect)
+    if (tvZoom !== undefined) {
+      session.tvZoom = Math.max(20, Math.min(200, tvZoom));
+    }
 
     // Join the socket.io room for this session
     socket.join(sessionId);
@@ -421,6 +433,22 @@ io.on('connection', (socket: GameSocket) => {
     if (!player?.isGameMaster) return;
 
     session.showQRCode = show;
+    broadcastSessionState(session);
+  });
+
+  // Set TV zoom level
+  socket.on('tv:zoom', (zoom) => {
+    const mapping = socketToSession.get(socket.id);
+    if (!mapping || mapping.isTV) return;
+
+    const session = sessions.get(mapping.sessionId);
+    if (!session) return;
+
+    const player = session.players.find((p) => p.id === mapping.playerId);
+    if (!player?.isGameMaster) return;
+
+    // Clamp zoom value between 20 and 200
+    session.tvZoom = Math.max(20, Math.min(200, zoom));
     broadcastSessionState(session);
   });
 

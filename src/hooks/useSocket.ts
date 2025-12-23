@@ -5,6 +5,7 @@ import type { ServerToClientEvents, ClientToServerEvents, GameSession, GameDefin
 type GameSocket = Socket<ServerToClientEvents, ClientToServerEvents>;
 
 const DEVICE_ID_KEY = 'deviceId';
+const TV_ZOOM_KEY = 'tvZoom';
 
 // Get or create a unique device identifier
 function getDeviceId(): string {
@@ -14,6 +15,18 @@ function getDeviceId(): string {
     localStorage.setItem(DEVICE_ID_KEY, deviceId);
   }
   return deviceId;
+}
+
+// Get saved TV zoom or default to 100
+function getSavedTVZoom(): number {
+  const saved = localStorage.getItem(TV_ZOOM_KEY);
+  if (saved) {
+    const zoom = parseInt(saved, 10);
+    if (!isNaN(zoom) && zoom >= 20 && zoom <= 200) {
+      return zoom;
+    }
+  }
+  return 100;
 }
 
 interface UseSocketReturn {
@@ -31,6 +44,7 @@ interface UseSocketReturn {
   endGame: () => void;
   sendAction: (action: { type: string; payload?: unknown }) => void;
   toggleQR: (show: boolean) => void;
+  setTVZoom: (zoom: number) => void;
 }
 
 export function useSocket(): UseSocketReturn {
@@ -62,6 +76,11 @@ export function useSocket(): UseSocketReturn {
         gameState: newSession.gameState,
       });
       setSession(newSession);
+
+      // Save TV zoom to localStorage whenever it changes (for TV clients)
+      if (newSession.tvZoom !== undefined) {
+        localStorage.setItem(TV_ZOOM_KEY, newSession.tvZoom.toString());
+      }
     });
 
     socket.on('session:error', (errorMsg) => {
@@ -88,7 +107,8 @@ export function useSocket(): UseSocketReturn {
         return;
       }
 
-      socketRef.current.emit('session:create', (response) => {
+      const tvZoom = getSavedTVZoom();
+      socketRef.current.emit('session:create', { tvZoom }, (response) => {
         if (response.success && response.sessionId) {
           resolve(response.sessionId);
         } else {
@@ -156,6 +176,12 @@ export function useSocket(): UseSocketReturn {
     socketRef.current?.emit('qr:toggle', show);
   }, []);
 
+  const setTVZoom = useCallback((zoom: number) => {
+    // Save to localStorage for TV clients
+    localStorage.setItem(TV_ZOOM_KEY, zoom.toString());
+    socketRef.current?.emit('tv:zoom', zoom);
+  }, []);
+
   return {
     socket: socketRef.current,
     connected,
@@ -171,5 +197,6 @@ export function useSocket(): UseSocketReturn {
     endGame,
     sendAction,
     toggleQR,
+    setTVZoom,
   };
 }
