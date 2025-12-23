@@ -151,13 +151,13 @@ function TVView({ players, gameState, socket }: TVViewProps) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center p-6 bg-background">
         <div className="text-center mb-6">
-          <h1 className="text-6xl font-extrabold bg-gradient-to-r from-primary via-[#a855f7] to-[#ec4899] bg-clip-text text-transparent mb-3">
+          <h1 className="text-4xl font-extrabold bg-gradient-to-r from-primary via-[#a855f7] to-[#ec4899] bg-clip-text text-transparent mb-3">
             🏆 {allRevealed ? 'Final Results' : 'Revealing Results'} 🏆
           </h1>
-          <div className="text-2xl text-muted-foreground mb-1.5">
+          <div className="text-xl text-muted-foreground mb-1.5">
             The word was: <span className="font-bold text-primary">{state.word}</span>
           </div>
-          <div className="text-xl text-muted-foreground">
+          <div className="text-lg text-muted-foreground">
             {allRevealed
               ? 'All results revealed!'
               : `Revealing ${currentIndex + 1} of ${state.results.length}`}
@@ -166,7 +166,7 @@ function TVView({ players, gameState, socket }: TVViewProps) {
 
         <Card
           className={cn(
-            'p-10 rounded-2xl border-4 transform transition-all max-w-4xl w-full animate-in fade-in zoom-in duration-700',
+            'p-4 rounded-2xl border-4 transform transition-all max-w-4xl w-full animate-in fade-in zoom-in duration-700',
             resultIndex === 0 &&
               'bg-gradient-to-r from-yellow-100 to-yellow-50 border-yellow-400 shadow-2xl',
             resultIndex === 1 && 'bg-gradient-to-r from-gray-100 to-gray-50 border-gray-400 shadow-xl',
@@ -187,7 +187,7 @@ function TVView({ players, gameState, socket }: TVViewProps) {
               {currentResult.rank}
             </div>
             <div className="flex-1">
-              <div className="text-5xl font-bold mb-5 text-foreground">
+              <div className="text-4xl font-bold mb-5 text-foreground">
                 {resultIndex === 0 && '🥇 '}
                 {resultIndex === 1 && '🥈 '}
                 {resultIndex === 2 && '🥉 '}
@@ -202,7 +202,7 @@ function TVView({ players, gameState, socket }: TVViewProps) {
                   />
                 </div>
               )}
-              <div className="text-2xl text-muted-foreground italic leading-relaxed">
+              <div className="text-xl text-muted-foreground italic leading-relaxed">
                 "{currentResult.reason}"
               </div>
             </div>

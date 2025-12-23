@@ -111,23 +111,23 @@ function TVView({ players, gameState }: TVViewProps) {
           {/* Timer */}
           <Countdown
             timeRemaining={timeRemaining}
-            size="lg"
-            className="mb-6"
+            size="md"
+            className="mb-1 mt-1"
           />
 
           {/* Letter */}
-          <div className="text-2xl text-muted-foreground mb-3">Letter:</div>
-          <div className="text-[9.6rem] font-extrabold bg-gradient-to-r from-primary via-[#a855f7] to-[#ec4899] bg-clip-text text-transparent mb-6">
+          <div className="text-2xl text-muted-foreground mb-1">Letter:</div>
+          <div className="text-[8.6rem] font-extrabold bg-gradient-to-r from-primary via-[#a855f7] to-[#ec4899] bg-clip-text text-transparent mb-1">
             {currentLetter}
           </div>
 
           {/* Category */}
-          <Card className="p-6 bg-card/90 backdrop-blur mb-6">
+          <Card className="p-3 bg-card/90 backdrop-blur mb-3">
             <div className="text-center">
               <div className="text-lg text-muted-foreground mb-2">
                 Category {state.currentCategoryIndex + 1} of {state.categories.length}
               </div>
-              <div className="text-4xl font-extrabold text-foreground">
+              <div className="text-3xl font-extrabold text-foreground">
                 {currentCategory}
               </div>
             </div>
@@ -268,9 +268,6 @@ function TVView({ players, gameState }: TVViewProps) {
             className="mb-3"
           />
 
-          <div className="text-base text-muted-foreground">
-            Auto-advancing in {timeRemaining}s...
-          </div>
         </div>
       </TVGameScene>
     );

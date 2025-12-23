@@ -3,7 +3,7 @@ import { StaticCategoryProvider } from './word-scramble/staticCategoryProvider.j
 import { CountdownTimer, broadcastSessionState as baseBroadcastSessionState } from './utils.js';
 
 const LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
-const SUBMISSION_TIME_SECONDS = 20;
+const SUBMISSION_TIME_SECONDS = 2000;
 const REVEAL_TIME_SECONDS = 5;
 const VOTING_TIME_SECONDS = 10;
 const CHALLENGE_RESULT_DISPLAY_SECONDS = 3;
@@ -135,6 +135,12 @@ function transitionToRevealing(session: ServerGameSession, io: GameServer): void
   const state = session.gameState as WordScrambleState;
   if (!state) return;
 
+  // Only transition if we're in the submitting phase
+  if (state.phase !== 'submitting') {
+    console.log(`Ignoring transitionToRevealing - already in phase: ${state.phase}`);
+    return;
+  }
+
   // Clear submission timer
   if (submissionTimer) {
     submissionTimer.stop();
@@ -169,8 +175,10 @@ function transitionToRevealing(session: ServerGameSession, io: GameServer): void
  * Start the 5-second reveal timer
  */
 function startRevealTimer(session: ServerGameSession, io: GameServer): void {
+  // Stop any existing timer before creating a new one
   if (revealTimer) {
     clearTimeout(revealTimer);
+    revealTimer = null;
   }
 
   revealTimer = setTimeout(() => {
@@ -183,7 +191,13 @@ function startRevealTimer(session: ServerGameSession, io: GameServer): void {
  */
 function advanceToNextReveal(session: ServerGameSession, io: GameServer): void {
   const state = session.gameState as WordScrambleState;
-  if (!state || state.phase !== 'revealing') return;
+  if (!state) return;
+
+  // Only advance if we're in the revealing phase
+  if (state.phase !== 'revealing') {
+    console.log(`Ignoring advanceToNextReveal - already in phase: ${state.phase}`);
+    return;
+  }
 
   // Clear current timer
   if (revealTimer) {
@@ -239,6 +253,12 @@ function transitionToVoting(session: ServerGameSession, io: GameServer, challeng
  * Start the 10-second voting timer
  */
 function startVotingTimer(session: ServerGameSession, io: GameServer): void {
+  // Stop any existing timer before creating a new one
+  if (votingTimer) {
+    votingTimer.stop();
+    votingTimer = null;
+  }
+
   votingTimer = new CountdownTimer({
     duration: VOTING_TIME_SECONDS,
     onTick: () => {
@@ -256,7 +276,13 @@ function startVotingTimer(session: ServerGameSession, io: GameServer): void {
  */
 function resolveVoting(session: ServerGameSession, io: GameServer): void {
   const state = session.gameState as WordScrambleState;
-  if (!state || state.phase !== 'voting') return;
+  if (!state) return;
+
+  // Only resolve if we're in the voting phase
+  if (state.phase !== 'voting') {
+    console.log(`Ignoring resolveVoting - already in phase: ${state.phase}`);
+    return;
+  }
 
   // Stop voting timer
   if (votingTimer) {
@@ -529,6 +555,12 @@ function proceedToNextCategory(session: ServerGameSession, io: GameServer): void
  * Start the 20-second submission timer
  */
 function startSubmissionTimer(session: ServerGameSession, io: GameServer): void {
+  // Stop any existing timer before creating a new one
+  if (submissionTimer) {
+    submissionTimer.stop();
+    submissionTimer = null;
+  }
+
   submissionTimer = new CountdownTimer({
     duration: SUBMISSION_TIME_SECONDS,
     onTick: () => {
