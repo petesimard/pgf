@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useSocket } from '../../hooks/useSocket';
 import Lobby from './Lobby';
 import GameContainer from './GameContainer';
+import AvatarHost from './AvatarHost';
 
 function TVApp() {
   const { connected, session, createSession, socket, wasReset, clearReset } = useSocket();
@@ -68,11 +69,16 @@ function TVApp() {
     );
   }
 
-  if (session.status === 'playing' && session.currentGameId) {
-    return <GameContainer session={session} socket={socket} />;
-  }
-
-  return <Lobby session={session} />;
+  return (
+    <>
+      {session.status === 'playing' && session.currentGameId ? (
+        <GameContainer session={session} socket={socket} />
+      ) : (
+        <Lobby session={session} />
+      )}
+      <AvatarHost socket={socket} />
+    </>
+  );
 }
 
 export default TVApp;

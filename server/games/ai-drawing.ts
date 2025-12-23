@@ -5,6 +5,7 @@ import OpenAI from 'openai';
 import sharp from 'sharp';
 import { z } from 'zod';
 import fs from 'fs';
+import { hostTalk } from './utils.js';
 
 export interface PlayerDrawing {
   playerId: string;
@@ -274,8 +275,9 @@ export const aiDrawingGame: GameHandler = {
   minPlayers: 2,
   maxPlayers: 8,
 
-  onStart(session, io) {
+  async onStart(session, io) {
     const drawings = initializeDrawings(session);
+
 
     const word = selectRandomWord(session.id);
     if (!word) {
@@ -311,6 +313,9 @@ export const aiDrawingGame: GameHandler = {
 
     const state = session.gameState as AIDrawingState;
     console.log(`AI Drawing game started! Word: ${state.word}`);
+
+    await hostTalk(session, io, "Welcome to AI Drawing! Draw the word: " + state.word + "!");
+
 
     // Start countdown timer
     countdown = new CountdownTimer({

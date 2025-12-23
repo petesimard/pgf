@@ -40,6 +40,10 @@ export interface ServerToClientEvents {
   'games:list': (games: GameDefinition[]) => void;
   'keepalive:ping': () => void;
   'drawing:image': (data: { playerId: string; imageData: string }) => void;
+  'host:speak-start': (data: { messageId: string; text: string }) => void;
+  'host:audio-chunk': (data: { messageId: string; audioChunk: string; isLast: boolean }) => void;
+  'host:speak-end': (data: { messageId: string }) => void;
+  'host:speak-error': (data: { messageId: string; error: string }) => void;
 }
 
 export interface ClientToServerEvents {
