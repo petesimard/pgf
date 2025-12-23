@@ -3,9 +3,9 @@ import { StaticCategoryProvider } from './word-scramble/staticCategoryProvider.j
 import { CountdownTimer, broadcastSessionState as baseBroadcastSessionState } from './utils.js';
 
 const LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
-const SUBMISSION_TIME_SECONDS = 2000;
+const SUBMISSION_TIME_SECONDS = 20;
 const REVEAL_TIME_SECONDS = 5;
-const VOTING_TIME_SECONDS = 10;
+const VOTING_TIME_SECONDS = 15;
 const CHALLENGE_RESULT_DISPLAY_SECONDS = 3;
 const CATEGORIES_PER_GAME = 5;
 

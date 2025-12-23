@@ -3,7 +3,7 @@ import type { ClientViewProps } from '../types';
 import Countdown from '@/components/shared/Countdown';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { Check } from 'lucide-react';
+import { Check, SkipForward } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Editor, Erase, Color4, BaseTool, SelectionTool, PanZoomTool } from 'js-draw';
 import 'js-draw/bundledStyles';
@@ -29,6 +29,7 @@ interface AIDrawingState {
     reason: string;
   }> | null;
   currentResultIndex: number; // -1 means none revealed yet
+  revealInterval: number; // milliseconds between result reveals
 }
 
 function ClientView({ player, gameState, sendAction, isGameMaster, endGame }: ClientViewProps) {
@@ -236,14 +237,30 @@ function ClientView({ player, gameState, sendAction, isGameMaster, endGame }: Cl
           )}
         </Card>
 
-        {/* End Game button for Game Master when all results revealed */}
-        {allRevealed && isGameMaster && endGame && (
-          <Button
-            onClick={endGame}
-            className="w-full h-12 bg-destructive hover:bg-destructive/90 text-white"
-          >
-            End Game
-          </Button>
+        {/* GM Controls */}
+        {isGameMaster && (
+          <div className="space-y-2">
+            {/* Skip button - only show if not all results revealed */}
+            {!allRevealed && (
+              <Button
+                onClick={() => sendAction({ type: 'skip-reveal' })}
+                className="w-full h-12 bg-primary hover:bg-primary/90 text-white"
+              >
+                <SkipForward className="w-5 h-5 mr-2" />
+                Skip to Next Result
+              </Button>
+            )}
+
+            {/* End Game button - only show when all results revealed */}
+            {allRevealed && endGame && (
+              <Button
+                onClick={endGame}
+                className="w-full h-12 bg-destructive hover:bg-destructive/90 text-white"
+              >
+                End Game
+              </Button>
+            )}
+          </div>
         )}
       </div>
     );

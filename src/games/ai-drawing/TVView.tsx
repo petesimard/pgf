@@ -25,6 +25,7 @@ interface AIDrawingState {
     reason: string;
   }> | null;
   currentResultIndex: number; // -1 means none revealed yet
+  revealInterval: number; // milliseconds between result reveals
 }
 
 function TVView({ players, gameState, socket }: TVViewProps) {
@@ -109,8 +110,8 @@ function TVView({ players, gameState, socket }: TVViewProps) {
       return;
     }
 
-    // Progress from 0 to 100 over 5 seconds (matching server's REVEAL_INTERVAL)
-    const REVEAL_INTERVAL_MS = 5000;
+    // Progress from 0 to 100 over the reveal interval (from server state)
+    const REVEAL_INTERVAL_MS = state.revealInterval;
     const TICK_INTERVAL_MS = 50; // Update every 50ms for smooth animation
     const progressPerTick = (100 * TICK_INTERVAL_MS) / REVEAL_INTERVAL_MS;
 

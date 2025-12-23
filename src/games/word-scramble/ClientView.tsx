@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import type { ClientViewProps } from '../types';
 import ClientGameScene from '@/components/shared/ClientGameScene';
 import { Card } from '@/components/ui/card';
@@ -61,6 +61,7 @@ function ClientView({ player, players, gameState, sendAction }: ClientViewProps)
   const state = gameState as WordScrambleState;
   const [answer, setAnswer] = useState('');
   const [timeRemaining, setTimeRemaining] = useState(0);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   const isGameMaster = player.isGameMaster;
 
@@ -90,10 +91,14 @@ function ClientView({ player, players, gameState, sendAction }: ClientViewProps)
     return () => clearInterval(interval);
   }, [state?.phase, state?.submissionStartTime, state?.revealStartTime, state?.votingStartTime, state?.submissionTimeSeconds, state?.revealTimeSeconds, state?.votingTimeSeconds]);
 
-  // Reset answer field when new category starts
+  // Reset answer field and focus input when new category starts
   useEffect(() => {
     if (state?.phase === 'submitting') {
       setAnswer('');
+      // Focus the input to show keyboard on mobile
+      setTimeout(() => {
+        inputRef.current?.focus();
+      }, 100);
     }
   }, [state?.currentCategoryIndex, state?.phase]);
 
@@ -147,6 +152,7 @@ function ClientView({ player, players, gameState, sendAction }: ClientViewProps)
                   }
                 }}>
                   <Input
+                    ref={inputRef}
                     placeholder={`Answer starting with ${currentLetter}...`}
                     value={answer}
                     onChange={(e) => setAnswer(e.target.value)}

@@ -28,9 +28,11 @@ export interface AIDrawingState {
   results: JudgingResult[] | null;
   collageUrl: string | null;
   currentResultIndex: number; // -1 means none revealed yet
+  revealInterval: number; // milliseconds between result reveals
 }
 
 const DRAWING_TIME = 60; // seconds
+const REVEAL_INTERVAL = 8000; // milliseconds between result reveals
 
 // Word provider instance
 const wordProvider: DrawingWordProvider = new StaticDrawingWordProvider();
@@ -174,7 +176,7 @@ Rank ALL drawings from best to worst based on:
 2. Creativity and artistic quality
 3. Clarity and recognizability
 
-For each drawing, provide a single sentence explaining your ranking. Use the player's letter not name.
+For each drawing, use the drawing's letter to identify it. Provide a single sentence explaining your reasoning. Use the player's name (not letter)in the description if you think it's important.
 
 Players: ${labelMap.map((m) => `${m.letter}: ${m.playerName}`).join(', ')}`;
 
@@ -218,7 +220,7 @@ Players: ${labelMap.map((m) => `${m.letter}: ${m.playerName}`).join(', ')}`;
               items: {
                 type: 'object',
                 properties: {
-                  letter: { type: 'string', description: 'The letter of the player' },
+                  letter: { type: 'string', description: 'The *letter* of the player' },
                   rank: { type: 'number' },
                   reason: { type: 'string' },
                 },
@@ -287,6 +289,7 @@ export const aiDrawingGame: GameHandler = {
         results: null,
         collageUrl: null,
         currentResultIndex: -1,
+        revealInterval: REVEAL_INTERVAL,
       };
       session.gameState = state;
     } else {
@@ -298,6 +301,7 @@ export const aiDrawingGame: GameHandler = {
         results: null,
         collageUrl: null,
         currentResultIndex: -1,
+        revealInterval: REVEAL_INTERVAL,
       };
       session.gameState = state;
     }
@@ -393,6 +397,93 @@ export const aiDrawingGame: GameHandler = {
 
       // Broadcast updated state
       broadcastSessionState(session, io);
+    } else if (action.type === 'skip-reveal') {
+      // Only Game Master can skip reveals
+      const player = session.players.find((p) => p.id === playerId);
+      if (!player || !player.isGameMaster) {
+        console.log(`Player ${playerId} attempted to skip reveal but is not GM`);
+        return;
+      }
+
+      // Only allow skipping during results phase
+      if (state.phase !== 'results' || !state.results || state.results.length === 0) {
+        console.log('Skip reveal attempted but not in results phase');
+        return;
+      }
+
+      // Don't skip if all results are already revealed
+      if (state.currentResultIndex >= state.results.length - 1) {
+        console.log('Skip reveal attempted but all results already revealed');
+        return;
+      }
+
+      console.log(`GM ${playerId} skipping to next result reveal`);
+
+      // Clear the current interval and immediately reveal next result
+      if (resultRevealInterval) {
+        clearInterval(resultRevealInterval);
+        resultRevealInterval = null;
+      }
+
+      // Advance to next result
+      state.currentResultIndex++;
+
+      // Send the drawing image for this result to TV
+      if (state.currentResultIndex < state.results.length) {
+        const currentResult = state.results[state.currentResultIndex];
+        const storage = drawingsStorage.get(session.id);
+        if (storage && session.tvSocketId) {
+          const drawing = storage[currentResult.playerId];
+          if (drawing && drawing.imageData) {
+            console.log(`Sending drawing image for ${currentResult.playerName}`);
+            io.to(session.tvSocketId).emit('drawing:image', {
+              playerId: drawing.playerId,
+              imageData: drawing.imageData,
+            });
+          }
+        }
+      }
+
+      // Broadcast the updated state
+      broadcastSessionState(session, io);
+
+      // If we haven't revealed all results yet, restart the timer
+      if (state.currentResultIndex < state.results.length - 1) {
+        const revealNext = () => {
+          const currentState = session.gameState as AIDrawingState;
+          if (!currentState || !currentState.results) {
+            if (resultRevealInterval) clearInterval(resultRevealInterval);
+            return;
+          }
+
+          currentState.currentResultIndex++;
+
+          if (currentState.currentResultIndex < currentState.results.length) {
+            const currentResult = currentState.results[currentState.currentResultIndex];
+            const storage = drawingsStorage.get(session.id);
+            if (storage && session.tvSocketId) {
+              const drawing = storage[currentResult.playerId];
+              if (drawing && drawing.imageData) {
+                io.to(session.tvSocketId).emit('drawing:image', {
+                  playerId: drawing.playerId,
+                  imageData: drawing.imageData,
+                });
+              }
+            }
+          }
+
+          broadcastSessionState(session, io);
+
+          if (currentState.currentResultIndex >= currentState.results.length - 1) {
+            if (resultRevealInterval) {
+              clearInterval(resultRevealInterval);
+              resultRevealInterval = null;
+            }
+          }
+        };
+
+        resultRevealInterval = setInterval(revealNext, state.revealInterval);
+      }
     }
   },
 
@@ -425,8 +516,6 @@ export const aiDrawingGame: GameHandler = {
 function startResultReveal(session: ServerGameSession, io: GameServer) {
   const state = session.gameState as AIDrawingState;
   if (!state || !state.results || state.results.length === 0) return;
-
-  const REVEAL_INTERVAL = 5000; // 5 seconds between each result
 
   console.log('Starting result reveal timer...');
 
@@ -489,9 +578,9 @@ function startResultReveal(session: ServerGameSession, io: GameServer) {
   console.log('[startResultReveal] Calling revealNext() immediately...');
   revealNext();
 
-  // Then continue revealing every REVEAL_INTERVAL
-  console.log(`[startResultReveal] Setting up interval to reveal every ${REVEAL_INTERVAL}ms`);
-  resultRevealInterval = setInterval(revealNext, REVEAL_INTERVAL);
+  // Then continue revealing every revealInterval
+  console.log(`[startResultReveal] Setting up interval to reveal every ${state.revealInterval}ms`);
+  resultRevealInterval = setInterval(revealNext, state.revealInterval);
 }
 
 async function handleJudging(session: ServerGameSession, io: GameServer) {
