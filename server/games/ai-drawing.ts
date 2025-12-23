@@ -140,7 +140,7 @@ async function createCollage(drawings: PlayerDrawing[]): Promise<Buffer> {
   const pngBuffer = await canvas.composite(composites).png().toBuffer();
 
   // Save to file for debugging
-  fs.writeFileSync('collage.png', pngBuffer);
+  //fs.writeFileSync('collage.png', pngBuffer);
 
   return pngBuffer;
 }
@@ -174,7 +174,7 @@ Rank ALL drawings from best to worst based on:
 2. Creativity and artistic quality
 3. Clarity and recognizability
 
-For each drawing, provide a single sentence explaining your ranking. Use the player's name not letter.
+For each drawing, provide a single sentence explaining your ranking. Use the player's letter not name.
 
 Players: ${labelMap.map((m) => `${m.letter}: ${m.playerName}`).join(', ')}`;
 
@@ -190,7 +190,7 @@ Players: ${labelMap.map((m) => `${m.letter}: ${m.playerName}`).join(', ')}`;
 
   console.log('Calling OpenAI API...');
   const completion = await openai.chat.completions.create({
-    model: 'gpt-4o-mini',
+    model: process.env.OPENAI_MODEL || 'gpt-4o-mini',
     messages: [
       {
         role: 'user',
