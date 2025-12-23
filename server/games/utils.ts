@@ -6,6 +6,7 @@
  */
 
 import type { ServerGameSession, GameServer } from '../types.js';
+import OpenAI from 'openai';
 
 /**
  * Configuration options for the countdown timer.
@@ -196,4 +197,45 @@ export function hostTalk(
       console.error('[hostTalk] Failed to generate speech:', error);
     }
   })();
+}
+
+/**
+ * Helper function to get text completion from OpenAI.
+ *
+ * This function provides a simple interface for getting LLM text responses
+ * using the OpenAI API. It uses environment variables for configuration:
+ * - OPENAI_API_KEY: Your OpenAI API key (required)
+ * - OPENAI_MODEL: The model to use (defaults to 'gpt-4o-mini')
+ *
+ * @param prompt - The text prompt to send to the LLM
+ * @returns The raw text response from the model
+ * @throws Error if no response is received from OpenAI
+ *
+ * @example
+ * ```typescript
+ * import { getAiText } from './utils.js';
+ *
+ * const response = await getAiText("Suggest a fun word for a drawing game");
+ * console.log(response); // "How about 'octopus'? It's fun to draw!"
+ * ```
+ */
+export async function getAiText(prompt: string): Promise<string> {
+  const openai = new OpenAI({
+    apiKey: process.env.OPENAI_API_KEY,
+  });
+
+  const completion = await openai.chat.completions.create({
+    model: process.env.OPENAI_MODEL || 'gpt-4o-mini',
+    messages: [
+      {
+        role: 'user',
+        content: prompt,
+      },
+    ],
+  });
+
+  const content = completion.choices[0].message.content;
+  if (!content) throw new Error('No response from OpenAI');
+
+  return content;
 }

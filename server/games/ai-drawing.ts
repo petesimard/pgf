@@ -177,7 +177,7 @@ Rank ALL drawings from best to worst based on:
 2. Creativity and artistic quality
 3. Clarity and recognizability
 
-For each drawing, use the drawing's letter to identify it. Provide a single sentence explaining your reasoning. Use the player's name (not letter)in the description if you think it's important.
+For each drawing, use the drawing's letter to identify it. Provide a single sentence explaining your reasoning. Dont use the player's name or letter in the description, just refer to it as 'this'.
 
 Players: ${labelMap.map((m) => `${m.letter}: ${m.playerName}`).join(', ')}`;
 
@@ -535,8 +535,23 @@ function startResultReveal(session: ServerGameSession, io: GameServer) {
     // Advance to next result
     currentState.currentResultIndex++;
 
-    console.log(`[revealNext] Revealing result ${currentState.currentResultIndex + 1}/${currentState.results.length}`);
-    console.log(`[revealNext] currentResultIndex is now: ${currentState.currentResultIndex}`);
+    const currentResult = currentState.results[currentState.currentResultIndex];
+    
+    var hostMessage = '';
+    if(currentState.currentResultIndex === 0) {
+      hostMessage = "And the winner is: " + currentResult.playerName + "! " + currentResult.reason;
+    } else {
+      const place = currentState.currentResultIndex + 1;
+      const suffix = (place % 10 === 1 && place % 100 !== 11) ? 'st' :
+                     (place % 10 === 2 && place % 100 !== 12) ? 'nd' :
+                     (place % 10 === 3 && place % 100 !== 13) ? 'rd' : 'th';
+      const placeName = place + suffix;
+      hostMessage = "In  " + placeName + " place is: " + currentResult.playerName + "! " + currentResult.reason;
+    }
+    hostTalk(session, io, hostMessage);
+
+    // console.log(`[revealNext] Revealing result ${currentResult.playerName} ${currentState.currentResultIndex + 1}/${currentState.results.length}`);
+    // console.log(`[revealNext] currentResultIndex is now: ${currentState.currentResultIndex}`);
 
     // Send the drawing image for this result to TV
     if (currentState.currentResultIndex < currentState.results.length) {
