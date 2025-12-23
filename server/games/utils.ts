@@ -155,7 +155,7 @@ export function broadcastSessionState(session: ServerGameSession, io: GameServer
 /**
  * Make the game host speak to the TV client with text-to-speech.
  *
- * Uses ElevenLabs API to generate speech audio that streams to the TV.
+ * This function runs in the background and does not block execution.
  * The avatar host will appear on screen and speak the message.
  * If TTS fails, the text will still be displayed (silent mode).
  *
@@ -168,23 +168,32 @@ export function broadcastSessionState(session: ServerGameSession, io: GameServer
  * import { hostTalk } from './utils.js';
  *
  * onStart(session, io) {
- *   await hostTalk(session, io, "Welcome to the game!");
- *   // ... rest of game initialization
+ *   hostTalk(session, io, "Welcome to the game!"); // Fire and forget
+ *   // ... rest of game initialization continues immediately
  * }
  * ```
  */
-export async function hostTalk(
+export function hostTalk(
   session: ServerGameSession,
   io: GameServer,
   message: string
-): Promise<void> {
-  if (!session.tvSocketId) {
+): void {
+  const tvSocketId = session.tvSocketId;
+
+  if (!tvSocketId) {
     console.warn('[hostTalk] No TV connected to session', session.id);
     return;
   }
 
   console.log(`[hostTalk] Speaking to session ${session.id}: "${message}"`);
 
-  const { streamSpeechToTV } = await import('../utils/elevenlabs.js');
-  await streamSpeechToTV(io, session.tvSocketId, message);
+  // Fire and forget - run in background
+  (async () => {
+    try {
+      const { streamSpeechToTV } = await import('../utils/elevenlabs.js');
+      await streamSpeechToTV(io, tvSocketId, message);
+    } catch (error) {
+      console.error('[hostTalk] Failed to generate speech:', error);
+    }
+  })();
 }
