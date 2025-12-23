@@ -94,7 +94,7 @@ async function createCollage(drawings: PlayerDrawing[]): Promise<Buffer> {
   for (let i = 0; i < drawings.length; i++) {
     const col = i % COLS;
     const row = Math.floor(i / COLS);
-    const label = String.fromCharCode(65 + i); // A, B, C, etc.
+    const label = String.fromCharCode(65 + i) + ': ' + drawings[i].playerName; // A, B, C, etc.
 
     // Convert base64 to buffer
     const base64Data = drawings[i].imageData.replace(/^data:image\/png;base64,/, '');
@@ -122,7 +122,7 @@ async function createCollage(drawings: PlayerDrawing[]): Promise<Buffer> {
     const labelSvg = `
       <svg width="${CANVAS_SIZE}" height="${LABEL_HEIGHT}">
         <rect width="${CANVAS_SIZE}" height="${LABEL_HEIGHT}" fill="#f0f0f0"/>
-        <text x="50%" y="50%" font-family="Arial" font-size="32" font-weight="bold"
+        <text x="50%" y="50%" font-family="Arial" font-size="26" font-weight="bold"
               text-anchor="middle" dominant-baseline="middle" fill="#333">
           ${label}
         </text>
@@ -140,7 +140,7 @@ async function createCollage(drawings: PlayerDrawing[]): Promise<Buffer> {
   const pngBuffer = await canvas.composite(composites).png().toBuffer();
 
   // Save to file for debugging
-  //fs.writeFileSync('collage.png', pngBuffer);
+  fs.writeFileSync('collage.png', pngBuffer);
 
   return pngBuffer;
 }
@@ -162,7 +162,7 @@ async function judgeDrawings(word: string, drawings: PlayerDrawing[]): Promise<J
 
   // Create mapping of labels to players
   const labelMap = drawings.map((d, i) => ({
-    label: String.fromCharCode(65 + i),
+    letter: String.fromCharCode(65 + i),
     playerId: d.playerId,
     playerName: d.playerName,
   }));
@@ -174,14 +174,14 @@ Rank ALL drawings from best to worst based on:
 2. Creativity and artistic quality
 3. Clarity and recognizability
 
-For each drawing, provide a single sentence explaining your ranking.
+For each drawing, provide a single sentence explaining your ranking. Use the player's name not letter.
 
-Players: ${labelMap.map((m) => `${m.label}: ${m.playerName}`).join(', ')}`;
+Players: ${labelMap.map((m) => `${m.letter}: ${m.playerName}`).join(', ')}`;
 
   const RankingSchema = z.object({
     rankings: z.array(
       z.object({
-        label: z.string(),
+        letter: z.string(),
         rank: z.number(),
         reason: z.string(),
       })
@@ -218,11 +218,11 @@ Players: ${labelMap.map((m) => `${m.label}: ${m.playerName}`).join(', ')}`;
               items: {
                 type: 'object',
                 properties: {
-                  label: { type: 'string' },
+                  letter: { type: 'string', description: 'The letter of the player' },
                   rank: { type: 'number' },
                   reason: { type: 'string' },
                 },
-                required: ['label', 'rank', 'reason'],
+                required: ['letter', 'rank', 'reason'],
                 additionalProperties: false,
               },
             },
@@ -244,11 +244,15 @@ Players: ${labelMap.map((m) => `${m.label}: ${m.playerName}`).join(', ')}`;
 
   // Convert to our result format
   return parsed.rankings.map((r) => {
-    const player = labelMap.find((m) => m.label === r.label);
+    // Extract just the letter (e.g., "A" from "A: Pete1" or just "A")
+    const player = labelMap.find((m) => m.letter === r.letter);
+    if (!player) {
+      throw new Error(`Could not find player for letter "${r.letter}"`);
+    }
     return {
       rank: r.rank,
-      playerId: player!.playerId,
-      playerName: player!.playerName,
+      playerId: player.playerId,
+      playerName: player.playerName,
       reason: r.reason,
     };
   });
