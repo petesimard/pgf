@@ -1,5 +1,6 @@
 import type { GameHandler, ServerGameSession, GameServer } from '../types.js';
 import { broadcastSessionState, CountdownTimer } from './utils.js';
+import { StaticDrawingWordProvider, type DrawingWordProvider } from './drawing-word-providers.js';
 import OpenAI from 'openai';
 import sharp from 'sharp';
 import { z } from 'zod';
@@ -29,33 +30,29 @@ export interface AIDrawingState {
   currentResultIndex: number; // -1 means none revealed yet
 }
 
-const DRAWING_WORDS = [
-  'Cat',
-  'House',
-  'Tree',
-  'Car',
-  'Bicycle',
-  'Pizza',
-  'Robot',
-  'Sun',
-  'Mountain',
-  'Fish',
-  'Flower',
-  'Castle',
-  'Dragon',
-  'Rocket',
-  'Guitar',
-  'Coffee',
-  'Umbrella',
-  'Butterfly',
-  'Spaceship',
-  'Rainbow',
-];
-
 const DRAWING_TIME = 60; // seconds
 
-function selectRandomWord(): string {
-  return DRAWING_WORDS[Math.floor(Math.random() * DRAWING_WORDS.length)];
+// Word provider instance
+const wordProvider: DrawingWordProvider = new StaticDrawingWordProvider();
+
+// Store used words per session to prevent repetition
+// Key: sessionId, Value: Set of used words
+const sessionUsedWords = new Map<string, Set<string>>();
+
+function selectRandomWord(sessionId: string): string | null {
+  // Get or create the set of used words for this session
+  if (!sessionUsedWords.has(sessionId)) {
+    sessionUsedWords.set(sessionId, new Set());
+  }
+
+  const usedWords = sessionUsedWords.get(sessionId)!;
+  const word = wordProvider.getWord(usedWords);
+
+  if (word) {
+    usedWords.add(word);
+  }
+
+  return word;
 }
 
 function initializeDrawings(session: ServerGameSession): Record<string, PlayerDrawing> {
@@ -274,20 +271,37 @@ export const aiDrawingGame: GameHandler = {
   onStart(session, io) {
     const drawings = initializeDrawings(session);
 
-    const state: AIDrawingState = {
-      word: selectRandomWord(),
-      timeRemaining: DRAWING_TIME,
-      drawings,
-      phase: 'drawing',
-      results: null,
-      collageUrl: null,
-      currentResultIndex: -1,
-    };
-    session.gameState = state;
+    const word = selectRandomWord(session.id);
+    if (!word) {
+      console.error('No words available for drawing!');
+      // Fallback to a default word if we run out
+      const state: AIDrawingState = {
+        word: 'Cat',
+        timeRemaining: DRAWING_TIME,
+        drawings,
+        phase: 'drawing',
+        results: null,
+        collageUrl: null,
+        currentResultIndex: -1,
+      };
+      session.gameState = state;
+    } else {
+      const state: AIDrawingState = {
+        word,
+        timeRemaining: DRAWING_TIME,
+        drawings,
+        phase: 'drawing',
+        results: null,
+        collageUrl: null,
+        currentResultIndex: -1,
+      };
+      session.gameState = state;
+    }
 
     // Store full drawings separately (including imageData)
     drawingsStorage.set(session.id, drawings);
 
+    const state = session.gameState as AIDrawingState;
     console.log(`AI Drawing game started! Word: ${state.word}`);
 
     // Start countdown timer
@@ -332,6 +346,8 @@ export const aiDrawingGame: GameHandler = {
     }
     // Clean up drawings storage
     drawingsStorage.delete(session.id);
+    // Clean up used words for this session
+    sessionUsedWords.delete(session.id);
     session.gameState = null;
   },
 
