@@ -526,9 +526,49 @@ io.on('connection', (socket: GameSocket) => {
     if (!session) return;
 
     if (mapping.isTV) {
-      // TV disconnected - keep session alive for reconnection
+      // TV disconnected - remove all players and clean up session
+      console.log(`TV disconnected from session ${session.id}, removing all players`);
+
+      // End the game if one is in progress
+      if (session.currentGameId && session.status === 'playing') {
+        const game = games.get(session.currentGameId);
+        game?.onEnd(session, io);
+      }
+
+      // Disconnect and remove all players
+      const playerIds = Array.from(session.playerSockets.keys());
+      playerIds.forEach((playerId) => {
+        const playerSocketId = session.playerSockets.get(playerId);
+        if (playerSocketId) {
+          // Notify the player they're being removed
+          io.to(playerSocketId).emit('player:removed', {
+            reason: 'tv_disconnected',
+            message: 'The TV has disconnected.',
+          });
+
+          // Disconnect the socket
+          const playerSocket = io.sockets.sockets.get(playerSocketId);
+          playerSocket?.disconnect(true);
+
+          // Clean up socket mapping
+          socketToSession.delete(playerSocketId);
+        }
+      });
+
+      // Clear session data
       session.tvSocketId = null;
-      console.log(`TV disconnected from session ${session.id}`);
+      session.players = [];
+      session.playerSockets.clear();
+      session.playerLastPing.clear();
+      session.deviceToPlayer.clear();
+      session.currentGameId = null;
+      session.gameState = null;
+      session.status = 'lobby';
+      session.showQRCode = true;
+
+      // Delete the session immediately
+      sessions.delete(session.id);
+      console.log(`Session ${session.id} cleaned up after TV disconnect`);
     } else if (mapping.playerId) {
       // Player disconnected
       const player = session.players.find((p) => p.id === mapping.playerId);
@@ -563,13 +603,16 @@ io.on('connection', (socket: GameSocket) => {
 
     socketToSession.delete(socket.id);
 
-    // Clean up empty sessions after a delay
-    setTimeout(() => {
-      if (session.players.every((p) => !p.connected) && !session.tvSocketId) {
-        sessions.delete(session.id);
-        console.log(`Session ${session.id} cleaned up`);
-      }
-    }, 60000);
+    // Clean up empty sessions after a delay (only for player disconnects)
+    if (!mapping.isTV) {
+      setTimeout(() => {
+        const currentSession = sessions.get(mapping.sessionId);
+        if (currentSession && currentSession.players.every((p) => !p.connected) && !currentSession.tvSocketId) {
+          sessions.delete(mapping.sessionId);
+          console.log(`Session ${mapping.sessionId} cleaned up`);
+        }
+      }, 60000);
+    }
   });
 });
 
