@@ -30,8 +30,10 @@ export interface GameDefinition {
 export interface ServerToClientEvents {
   'session:state': (session: GameSession) => void;
   'session:error': (error: string) => void;
+  'session:reset': () => void;
   'player:joined': (player: Player) => void;
   'player:left': (playerId: string) => void;
+  'player:removed': (data: { reason: string; message: string }) => void;
   'game:started': (gameId: string) => void;
   'game:ended': () => void;
   'game:state': (state: unknown) => void;

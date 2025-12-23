@@ -13,9 +13,6 @@ interface PlayerListProps {
 function PlayerList({ players, showScores = false, scores = {} }: PlayerListProps) {
   if (players.length === 0) return null;
 
-  const activePlayers = players.filter((p) => p.connected && p.isActive).length;
-  const waitingPlayers = players.filter((p) => p.connected && !p.isActive).length;
-
   return (
     <div className="mt-2 sm:mt-4 lg:mt-6 w-full max-w-2xl px-2">
 

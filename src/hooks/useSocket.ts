@@ -36,6 +36,9 @@ interface UseSocketReturn {
   games: GameDefinition[];
   playerId: string | null;
   error: string | null;
+  wasRemoved: boolean;
+  removalReason: string | null;
+  wasReset: boolean;
   createSession: () => Promise<string>;
   joinSession: (sessionId: string, name: string) => Promise<string>;
   renamePlayer: (newName: string) => Promise<void>;
@@ -45,6 +48,7 @@ interface UseSocketReturn {
   sendAction: (action: { type: string; payload?: unknown }) => void;
   toggleQR: (show: boolean) => void;
   setTVZoom: (zoom: number) => void;
+  clearReset: () => void;
 }
 
 export function useSocket(): UseSocketReturn {
@@ -54,6 +58,9 @@ export function useSocket(): UseSocketReturn {
   const [games, setGames] = useState<GameDefinition[]>([]);
   const [playerId, setPlayerId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [wasRemoved, setWasRemoved] = useState(false);
+  const [removalReason, setRemovalReason] = useState<string | null>(null);
+  const [wasReset, setWasReset] = useState(false);
 
   useEffect(() => {
     // Always use window.location.origin to ensure phones can connect
@@ -93,6 +100,19 @@ export function useSocket(): UseSocketReturn {
 
     socket.on('keepalive:ping', () => {
       socket.emit('keepalive:pong');
+    });
+
+    socket.on('player:removed', (data) => {
+      console.log('[useSocket] Player removed:', data);
+      setWasRemoved(true);
+      setRemovalReason(data.message);
+      setSession(null);
+      setPlayerId(null);
+    });
+
+    socket.on('session:reset', () => {
+      console.log('[useSocket] Session reset to lobby');
+      setWasReset(true);
     });
 
     return () => {
@@ -182,6 +202,10 @@ export function useSocket(): UseSocketReturn {
     socketRef.current?.emit('tv:zoom', zoom);
   }, []);
 
+  const clearReset = useCallback(() => {
+    setWasReset(false);
+  }, []);
+
   return {
     socket: socketRef.current,
     connected,
@@ -189,6 +213,9 @@ export function useSocket(): UseSocketReturn {
     games,
     playerId,
     error,
+    wasRemoved,
+    removalReason,
+    wasReset,
     createSession,
     joinSession,
     renamePlayer,
@@ -198,5 +225,6 @@ export function useSocket(): UseSocketReturn {
     sendAction,
     toggleQR,
     setTVZoom,
+    clearReset,
   };
 }

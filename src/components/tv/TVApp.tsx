@@ -4,7 +4,7 @@ import Lobby from './Lobby';
 import GameContainer from './GameContainer';
 
 function TVApp() {
-  const { connected, session, createSession, socket } = useSocket();
+  const { connected, session, createSession, socket, wasReset, clearReset } = useSocket();
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -15,6 +15,16 @@ function TVApp() {
         .catch((err) => setError(err.message));
     }
   }, [connected, sessionId, createSession]);
+
+  // Handle session reset - clear the reset flag
+  useEffect(() => {
+    if (wasReset) {
+      console.log('[TVApp] Session was reset to lobby');
+      clearReset();
+      // The session state will be updated automatically via session:state event
+      // which will show the lobby with QR code
+    }
+  }, [wasReset, clearReset]);
 
   // Apply zoom to body element
   useEffect(() => {

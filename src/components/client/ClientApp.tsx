@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { useSocket } from '../../hooks/useSocket';
 import JoinForm from './JoinForm';
 import ClientLobby from './ClientLobby';
@@ -9,10 +9,21 @@ const PLAYER_NAME_KEY = 'playerName';
 
 function ClientApp() {
   const { sessionId } = useParams<{ sessionId: string }>();
-  const { connected, session, games, playerId, error, joinSession, renamePlayer, selectGame, startGame, endGame, sendAction, toggleQR, setTVZoom } = useSocket();
+  const navigate = useNavigate();
+  const { connected, session, games, playerId, error, wasRemoved, removalReason, joinSession, renamePlayer, selectGame, startGame, endGame, sendAction, toggleQR, setTVZoom } = useSocket();
   const [joinError, setJoinError] = useState<string | null>(null);
   const [hasJoined, setHasJoined] = useState(false);
   const [autoJoining, setAutoJoining] = useState(false);
+
+  // Handle player removal - navigate back to landing page
+  useEffect(() => {
+    if (wasRemoved) {
+      // Show alert with removal reason
+      alert(removalReason || 'You have been removed from the session.');
+      // Navigate back to landing page
+      navigate('/', { replace: true });
+    }
+  }, [wasRemoved, removalReason, navigate]);
 
   // Auto-join with saved name when connected
   useEffect(() => {

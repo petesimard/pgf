@@ -115,6 +115,9 @@ function removePlayer(session: ServerGameSession, playerId: string, reason = 'ti
 
   const wasGameMaster = player.isGameMaster;
 
+  // Get the player's socket ID before removing them
+  const playerSocketId = session.playerSockets.get(playerId);
+
   // Remove player from the session
   session.players = session.players.filter((p) => p.id !== playerId);
   session.playerSockets.delete(playerId);
@@ -126,6 +129,20 @@ function removePlayer(session: ServerGameSession, playerId: string, reason = 'ti
   }
 
   console.log(`Player ${player.name} removed from session ${session.id} (${reason})`);
+
+  // Notify the removed player
+  if (playerSocketId) {
+    const messages: Record<string, string> = {
+      timeout: 'You were disconnected due to inactivity.',
+      duplicate: 'This device connected from another browser/tab.',
+      kicked: 'You have been removed from the session.',
+    };
+
+    io.to(playerSocketId).emit('player:removed', {
+      reason,
+      message: messages[reason] || 'You have been removed from the session.',
+    });
+  }
 
   // If Game Master was removed, assign to the next player in the list
   if (wasGameMaster && session.players.length > 0) {
@@ -144,6 +161,39 @@ function removePlayer(session: ServerGameSession, playerId: string, reason = 'ti
   }
 
   broadcastSessionState(session);
+
+  // Check if session should reset to lobby
+  checkAndResetIfEmpty(session);
+}
+
+// Check if all players are disconnected and reset session to lobby
+function checkAndResetIfEmpty(session: ServerGameSession) {
+  const hasConnectedPlayers = session.players.some((p) => p.connected);
+
+  if (!hasConnectedPlayers && session.players.length === 0) {
+    // No players at all - reset to lobby
+    if (session.status === 'playing' && session.currentGameId) {
+      // Properly end the game first to clean up timers and resources
+      const game = games.get(session.currentGameId);
+      if (game?.onEnd) {
+        game.onEnd(session, io);
+      }
+
+      session.status = 'lobby';
+      session.currentGameId = null;
+      session.gameState = null;
+      session.showQRCode = true;
+
+      console.log(`Session ${session.id} reset to lobby - no players`);
+
+      // Notify TV to reset to QR screen
+      if (session.tvSocketId) {
+        io.to(session.tvSocketId).emit('session:reset');
+      }
+
+      broadcastSessionState(session);
+    }
+  }
 }
 
 // Check for timed out players
@@ -160,6 +210,9 @@ function checkPlayerTimeouts(session: ServerGameSession) {
   timedOutPlayers.forEach((playerId) => {
     removePlayer(session, playerId);
   });
+
+  // After removing timed out players, check if session should reset
+  checkAndResetIfEmpty(session);
 }
 
 io.on('connection', (socket: GameSocket) => {
@@ -502,6 +555,9 @@ io.on('connection', (socket: GameSocket) => {
         }
 
         broadcastSessionState(session);
+
+        // Check if session should reset to lobby
+        checkAndResetIfEmpty(session);
       }
     }
 
