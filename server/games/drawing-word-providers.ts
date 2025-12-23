@@ -157,7 +157,7 @@ export class StaticDrawingWordProvider implements DrawingWordProvider {
       'Torch',
       'Lantern',
       'Flashlight',
-      'Tent Campfire',
+      'Campfire',
       'Sleeping Bag',
       'Binoculars',
       'Telescope',
