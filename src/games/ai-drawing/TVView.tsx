@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import type { TVViewProps } from '../types';
 import TVGameScene from '@/components/shared/GameScene';
 import Countdown from '@/components/shared/Countdown';
@@ -31,6 +31,8 @@ function TVView({ players, gameState, socket }: TVViewProps) {
   const state = gameState as AIDrawingState;
   const [localTimeRemaining, setLocalTimeRemaining] = useState(state?.timeRemaining || 0);
   const [drawingImages, setDrawingImages] = useState<Record<string, string>>({});
+  const [revealProgress, setRevealProgress] = useState(0);
+  const lastResultIndexRef = useRef<number>(-2);
 
   // Debug logging
   useEffect(() => {
@@ -84,6 +86,43 @@ function TVView({ players, gameState, socket }: TVViewProps) {
 
     return () => clearInterval(interval);
   }, [state?.phase]);
+
+  // Progress bar for result reveals (5 seconds)
+  useEffect(() => {
+    if (state?.phase !== 'results' || !state?.results || state.results.length === 0) {
+      setRevealProgress(0);
+      return;
+    }
+
+    const currentIndex = state.currentResultIndex;
+    const allRevealed = currentIndex >= state.results.length - 1;
+
+    // Reset progress when a new result is revealed
+    if (currentIndex !== lastResultIndexRef.current) {
+      setRevealProgress(0);
+      lastResultIndexRef.current = currentIndex;
+    }
+
+    // Don't run progress bar if all results are revealed
+    if (allRevealed) {
+      setRevealProgress(100);
+      return;
+    }
+
+    // Progress from 0 to 100 over 5 seconds (matching server's REVEAL_INTERVAL)
+    const REVEAL_INTERVAL_MS = 5000;
+    const TICK_INTERVAL_MS = 50; // Update every 50ms for smooth animation
+    const progressPerTick = (100 * TICK_INTERVAL_MS) / REVEAL_INTERVAL_MS;
+
+    const interval = setInterval(() => {
+      setRevealProgress((prev) => {
+        const next = prev + progressPerTick;
+        return next >= 100 ? 100 : next;
+      });
+    }, TICK_INTERVAL_MS);
+
+    return () => clearInterval(interval);
+  }, [state?.phase, state?.currentResultIndex, state?.results]);
 
   if (!state) {
     return (
@@ -149,65 +188,77 @@ function TVView({ players, gameState, socket }: TVViewProps) {
     const resultIndex = safeIndex; // 0-based index for styling
 
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center p-6 bg-background">
-        <div className="text-center mb-6">
-          <h1 className="text-4xl font-extrabold bg-gradient-to-r from-primary via-[#a855f7] to-[#ec4899] bg-clip-text text-transparent mb-3">
-            🏆 {allRevealed ? 'Final Results' : 'Revealing Results'} 🏆
-          </h1>
-          <div className="text-xl text-muted-foreground mb-1.5">
-            The word was: <span className="font-bold text-primary">{state.word}</span>
+      <div className="min-h-screen flex flex-col bg-background">
+        <div className="flex-1 flex flex-col items-center justify-center p-6">
+          <div className="text-center mb-6">
+            <h1 className="text-4xl font-extrabold bg-gradient-to-r from-primary via-[#a855f7] to-[#ec4899] bg-clip-text text-transparent mb-3">
+              🏆 {allRevealed ? 'Final Results' : 'Revealing Results'} 🏆
+            </h1>
+            <div className="text-xl text-muted-foreground mb-1.5">
+              The word was: <span className="font-bold text-primary">{state.word}</span>
+            </div>
+            <div className="text-lg text-muted-foreground">
+              {allRevealed
+                ? 'All results revealed!'
+                : `Revealing ${currentIndex + 1} of ${state.results.length}`}
+            </div>
           </div>
-          <div className="text-lg text-muted-foreground">
-            {allRevealed
-              ? 'All results revealed!'
-              : `Revealing ${currentIndex + 1} of ${state.results.length}`}
-          </div>
+
+          <Card
+            className={cn(
+              'p-4 rounded-2xl border-4 transform transition-all max-w-4xl w-full animate-in fade-in zoom-in duration-700',
+              resultIndex === 0 &&
+                'bg-gradient-to-r from-yellow-100 to-yellow-50 border-yellow-400 shadow-2xl',
+              resultIndex === 1 && 'bg-gradient-to-r from-gray-100 to-gray-50 border-gray-400 shadow-xl',
+              resultIndex === 2 && 'bg-gradient-to-r from-amber-100 to-amber-50 border-amber-600 shadow-xl',
+              resultIndex > 2 && 'bg-card border-border shadow-lg'
+            )}
+          >
+            <div className="flex items-start gap-6">
+              <div
+                className={cn(
+                  'text-7xl font-extrabold w-28 h-28 flex items-center justify-center rounded-full shrink-0',
+                  resultIndex === 0 && 'bg-yellow-400 text-white shadow-lg',
+                  resultIndex === 1 && 'bg-gray-400 text-white shadow-lg',
+                  resultIndex === 2 && 'bg-amber-600 text-white shadow-lg',
+                  resultIndex > 2 && 'bg-muted text-muted-foreground'
+                )}
+              >
+                {currentResult.rank}
+              </div>
+              <div className="flex-1">
+                <div className="text-4xl font-bold mb-5 text-foreground">
+                  {resultIndex === 0 && '🥇 '}
+                  {resultIndex === 1 && '🥈 '}
+                  {resultIndex === 2 && '🥉 '}
+                  {currentResult.playerName}
+                </div>
+                {drawingImages[currentResult.playerId] && (
+                  <div className="mb-5 flex justify-center">
+                    <img
+                      src={drawingImages[currentResult.playerId]}
+                      alt={`${currentResult.playerName}'s drawing`}
+                      className="max-w-md max-h-64 rounded-lg border-2 border-border shadow-md object-contain bg-white"
+                    />
+                  </div>
+                )}
+                <div className="text-xl text-muted-foreground italic leading-relaxed">
+                  "{currentResult.reason}"
+                </div>
+              </div>
+            </div>
+          </Card>
         </div>
 
-        <Card
-          className={cn(
-            'p-4 rounded-2xl border-4 transform transition-all max-w-4xl w-full animate-in fade-in zoom-in duration-700',
-            resultIndex === 0 &&
-              'bg-gradient-to-r from-yellow-100 to-yellow-50 border-yellow-400 shadow-2xl',
-            resultIndex === 1 && 'bg-gradient-to-r from-gray-100 to-gray-50 border-gray-400 shadow-xl',
-            resultIndex === 2 && 'bg-gradient-to-r from-amber-100 to-amber-50 border-amber-600 shadow-xl',
-            resultIndex > 2 && 'bg-card border-border shadow-lg'
-          )}
-        >
-          <div className="flex items-start gap-6">
+        {/* Progress bar at the bottom */}
+        {!allRevealed && (
+          <div className="w-full bg-muted/30 h-3">
             <div
-              className={cn(
-                'text-7xl font-extrabold w-28 h-28 flex items-center justify-center rounded-full shrink-0',
-                resultIndex === 0 && 'bg-yellow-400 text-white shadow-lg',
-                resultIndex === 1 && 'bg-gray-400 text-white shadow-lg',
-                resultIndex === 2 && 'bg-amber-600 text-white shadow-lg',
-                resultIndex > 2 && 'bg-muted text-muted-foreground'
-              )}
-            >
-              {currentResult.rank}
-            </div>
-            <div className="flex-1">
-              <div className="text-4xl font-bold mb-5 text-foreground">
-                {resultIndex === 0 && '🥇 '}
-                {resultIndex === 1 && '🥈 '}
-                {resultIndex === 2 && '🥉 '}
-                {currentResult.playerName}
-              </div>
-              {drawingImages[currentResult.playerId] && (
-                <div className="mb-5 flex justify-center">
-                  <img
-                    src={drawingImages[currentResult.playerId]}
-                    alt={`${currentResult.playerName}'s drawing`}
-                    className="max-w-md max-h-64 rounded-lg border-2 border-border shadow-md object-contain bg-white"
-                  />
-                </div>
-              )}
-              <div className="text-xl text-muted-foreground italic leading-relaxed">
-                "{currentResult.reason}"
-              </div>
-            </div>
+              className="h-full bg-gradient-to-r from-primary via-[#a855f7] to-[#ec4899] transition-all duration-100 ease-linear"
+              style={{ width: `${revealProgress}%` }}
+            />
           </div>
-        </Card>
+        )}
       </div>
     );
   }
