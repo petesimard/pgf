@@ -24,6 +24,8 @@ function AvatarHost({ socket }: AvatarHostProps) {
   const currentMessageIdRef = useRef<string | null>(null);
   const fadeTimeoutRef = useRef<number | null>(null);
   const currentBlobUrlRef = useRef<string | null>(null);
+  const isAudioPlayingRef = useRef(false);
+  const hasStartedPlayingRef = useRef<string | null>(null); // Track which messageId has started playing
 
   // Initialize audio element
   useEffect(() => {
@@ -52,6 +54,8 @@ function AvatarHost({ socket }: AvatarHostProps) {
       currentBlobUrlRef.current = null;
     }
     currentMessageIdRef.current = null;
+    isAudioPlayingRef.current = false;
+    hasStartedPlayingRef.current = null;
   };
 
   // Schedule fade-out
@@ -100,23 +104,44 @@ function AvatarHost({ socket }: AvatarHostProps) {
       const audio = audioElementRef.current;
       audio.src = url;
 
+      // Set up event handlers before playing
       audio.onended = () => {
         console.log('[AvatarHost] Audio playback completed');
-        scheduleFadeOut(1000);
+        isAudioPlayingRef.current = false;
+        scheduleFadeOut(1000); // Wait 1 second after audio ends before fading
       };
 
       audio.onerror = (e) => {
         console.error('[AvatarHost] Audio playback error:', e);
-        scheduleFadeOut(5000);
+        isAudioPlayingRef.current = false;
+        scheduleFadeOut(5000); // Text-only mode, fade after 5 seconds
+      };
+
+      audio.onloadeddata = () => {
+        console.log('[AvatarHost] Audio loaded, duration:', audio.duration, 'seconds');
+      };
+
+      audio.onplay = () => {
+        console.log('[AvatarHost] Audio started playing');
+        isAudioPlayingRef.current = true;
+      };
+
+      audio.onpause = () => {
+        console.log('[AvatarHost] Audio paused');
       };
 
       // Play audio
-      audio.play().catch((error) => {
-        console.error('[AvatarHost] Failed to play audio:', error);
-        scheduleFadeOut(5000);
-      });
-
-      setCurrentSpeech((prev) => (prev ? { ...prev, isPlaying: true } : null));
+      audio.play()
+        .then(() => {
+          console.log('[AvatarHost] Audio play() promise resolved');
+          setCurrentSpeech((prev) => (prev ? { ...prev, isPlaying: true } : null));
+        })
+        .catch((error) => {
+          console.error('[AvatarHost] Failed to play audio:', error);
+          isAudioPlayingRef.current = false;
+          // Text-only mode: still show text but fade after 5 seconds
+          scheduleFadeOut(5000);
+        });
     } catch (error) {
       console.error('[AvatarHost] Failed to create audio blob:', error);
       scheduleFadeOut(5000);
@@ -165,15 +190,17 @@ function AvatarHost({ socket }: AvatarHostProps) {
       }
 
       if (data.isLast) {
-        // All chunks received, play the complete audio
+        // All chunks received, mark as complete and play audio
         setCurrentSpeech((prev) => {
-          if (prev) {
-            const updatedSpeech = { ...prev, isComplete: true };
-            // Play audio with all accumulated chunks
-            playAudio(updatedSpeech.audioChunks);
-            return updatedSpeech;
+          if (prev && hasStartedPlayingRef.current !== data.messageId) {
+            // Only play audio once per message
+            hasStartedPlayingRef.current = data.messageId;
+            const chunks = prev.audioChunks;
+            // Use setTimeout to ensure state update completes before playAudio
+            setTimeout(() => playAudio(chunks), 0);
+            return { ...prev, isComplete: true };
           }
-          return null;
+          return prev ? { ...prev, isComplete: true } : null;
         });
       } else if (data.audioChunk) {
         // Convert base64 to Uint8Array and accumulate
@@ -222,7 +249,7 @@ function AvatarHost({ socket }: AvatarHostProps) {
       socket.off('host:speak-end', handleSpeakEnd);
       socket.off('host:speak-error', handleSpeakError);
     };
-  }, [socket, currentSpeech]);
+  }, [socket]);
 
   // Cleanup on unmount
   useEffect(() => {
