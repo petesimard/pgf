@@ -1,6 +1,6 @@
 import type { GameHandler, ServerGameSession, GameServer } from '../types.js';
 import { StaticCategoryProvider } from './word-scramble/staticCategoryProvider.js';
-import { CountdownTimer, broadcastSessionState as baseBroadcastSessionState } from './utils.js';
+import { CountdownTimer, broadcastSessionState as baseBroadcastSessionState, hostTalk } from './utils.js';
 
 const LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
 const SUBMISSION_TIME_SECONDS = 20;
@@ -56,6 +56,7 @@ export interface WordScrambleState {
   revealOrder: string[];        // playerIds in reveal order
   currentRevealIndex: number;
   revealStartTime: number;      // For 5s auto-advance
+  currentRevealIsDuplicate: boolean; // True if current reveal is 2nd+ occurrence
 
   // Voting phase
   challengedPlayerId: string | null;
@@ -153,6 +154,7 @@ function transitionToRevealing(session: ServerGameSession, io: GameServer): void
   );
   state.revealOrder = playersWithAnswers.sort(() => Math.random() - 0.5);
   state.currentRevealIndex = 0;
+  state.currentRevealIsDuplicate = false;
   state.phase = 'revealing';
 
   // If no one submitted anything, skip directly to next category or results
@@ -211,6 +213,27 @@ function advanceToNextReveal(session: ServerGameSession, io: GameServer): void {
   if (state.currentRevealIndex < state.revealOrder.length) {
     // More reveals to show
     state.revealStartTime = Date.now();
+
+    // Check if this answer is a duplicate (2nd+ occurrence)
+    const currentPlayerId = state.revealOrder[state.currentRevealIndex];
+    const currentAnswer = state.submissions[currentPlayerId];
+    const normalizedCurrent = currentAnswer?.trim().toLowerCase() || '';
+
+    // Count how many times this answer appeared BEFORE this reveal
+    let previousOccurrences = 0;
+    for (let i = 0; i < state.currentRevealIndex; i++) {
+      const prevPlayerId = state.revealOrder[i];
+      const prevAnswer = state.submissions[prevPlayerId];
+      const normalizedPrev = prevAnswer?.trim().toLowerCase() || '';
+
+      if (normalizedPrev === normalizedCurrent && normalizedCurrent !== '') {
+        previousOccurrences++;
+      }
+    }
+
+    // It's a duplicate if it appeared at least once before
+    state.currentRevealIsDuplicate = previousOccurrences > 0;
+
     session.gameState = state;
     broadcastSessionState(session, io);
     startRevealTimer(session, io);
@@ -322,6 +345,10 @@ function resolveVoting(session: ServerGameSession, io: GameServer): void {
   session.gameState = state;
   broadcastSessionState(session, io);
 
+  // Announce the voting result
+  const resultMessage = rejected ? 'The word was rejected!' : 'The word was approved!';
+  hostTalk(session, io, resultMessage);
+
   // Wait 5 seconds to show results, then advance to next reveal
   challengeResultTimer = setTimeout(() => {
     const currentState = session.gameState as WordScrambleState;
@@ -333,6 +360,7 @@ function resolveVoting(session: ServerGameSession, io: GameServer): void {
     currentState.votes = {};
     currentState.challengedPlayerId = null;
     currentState.challengedAnswer = null;
+    currentState.currentRevealIsDuplicate = false; // Will be recalculated in advanceToNextReveal
 
     session.gameState = currentState;
 
@@ -535,11 +563,17 @@ function proceedToNextCategory(session: ServerGameSession, io: GameServer): void
     state.submissions = {};
     state.revealOrder = [];
     state.currentRevealIndex = -1;
+    state.currentRevealIsDuplicate = false;
     state.rejectedPlayerIds = new Set(); // Clear rejected players for new category
     state.challengedPlayerIds = new Set(); // Clear challenged players for new category
 
     session.gameState = state;
     broadcastSessionState(session, io);
+
+    // Announce the new category
+    const letter = state.letters[state.currentCategoryIndex];
+    const category = state.categories[state.currentCategoryIndex];
+    hostTalk(session, io, `Category ${state.currentCategoryIndex + 1}: ${category}, starting with the letter ${letter}!`);
 
     // Start submission timer
     startSubmissionTimer(session, io);
@@ -611,6 +645,7 @@ export const wordScrambleGame: GameHandler = {
       revealOrder: [],
       currentRevealIndex: -1,
       revealStartTime: 0,
+      currentRevealIsDuplicate: false,
       challengedPlayerId: null,
       challengedAnswer: null,
       votes: {},
@@ -629,6 +664,9 @@ export const wordScrambleGame: GameHandler = {
 
     // Broadcast initial state to all clients
     broadcastSessionState(session, io);
+
+    // Announce the first category
+    hostTalk(session, io, `Welcome to Word Scramble! Category 1: ${categories[0]}, starting with the letter ${letters[0]}!`);
 
     // Start 20-second submission timer
     startSubmissionTimer(session, io);
@@ -727,6 +765,10 @@ export const wordScrambleGame: GameHandler = {
         if (playerId === challengedPlayerId) return;
 
         console.log(`Player ${player.name} challenged ${challengedPlayerId}'s answer`);
+
+        // Announce the challenge
+        hostTalk(session, io, `${player.name} has challenged the word!`);
+
         transitionToVoting(session, io, challengedPlayerId);
         break;
       }
@@ -803,6 +845,7 @@ export const wordScrambleGame: GameHandler = {
         state.submissions = {};
         state.revealOrder = [];
         state.currentRevealIndex = -1;
+        state.currentRevealIsDuplicate = false;
         state.rejectedPlayerIds = new Set();
         state.challengedPlayerIds = new Set();
         state.categoryHistory = [];
@@ -810,6 +853,11 @@ export const wordScrambleGame: GameHandler = {
 
         session.gameState = state;
         broadcastSessionState(session, io);
+
+        // Announce the new round
+        const letter = state.letters[0];
+        const category = state.categories[0];
+        hostTalk(session, io, `New round! Category 1: ${category}, starting with the letter ${letter}!`);
 
         startSubmissionTimer(session, io);
         break;

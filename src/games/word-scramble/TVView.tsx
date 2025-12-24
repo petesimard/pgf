@@ -40,6 +40,7 @@ interface WordScrambleState {
   revealOrder: string[];
   currentRevealIndex: number;
   revealStartTime: number;
+  currentRevealIsDuplicate: boolean;
   challengedPlayerId: string | null;
   challengedAnswer: string | null;
   votes: Record<string, 'up' | 'down'>;
@@ -260,6 +261,13 @@ function TVView({ players, gameState }: TVViewProps) {
               {currentAnswer}
             </div>
           </Card>
+
+          {/* Duplicate indicator */}
+          {state.currentRevealIsDuplicate && (
+            <div className="text-5xl font-extrabold text-destructive mb-4 animate-pulse">
+              Duplicate!
+            </div>
+          )}
 
           {/* Timer */}
           <Countdown
