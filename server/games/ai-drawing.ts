@@ -38,6 +38,26 @@ const REVEAL_INTERVAL = 8000; // milliseconds between result reveals
 // Word provider instance
 const wordProvider: DrawingWordProvider = new StaticDrawingWordProvider();
 
+// Variations of the "word to draw" prompt
+// Use {word} placeholder for where the word should appear
+const WORD_PROMPTS = [
+  "The word to draw is: {word}!",
+  "Your drawing challenge is: {word}!",
+  "Draw {word} as best you can!",
+  "Get ready to draw: {word}!",
+  "{word} is your word to draw!",
+  "Time to illustrate: {word}!",
+  "Can you draw {word}?",
+  "{word} is your artistic challenge!",
+  "Sketch {word} on your canvas!",
+  "Put pen to paper and draw: {word}!",
+];
+
+function getRandomWordPrompt(word: string): string {
+  const template = WORD_PROMPTS[Math.floor(Math.random() * WORD_PROMPTS.length)];
+  return template.replace('{word}', word);
+}
+
 // Store used words per session to prevent repetition
 // Key: sessionId, Value: Set of used words
 const sessionUsedWords = new Map<string, Set<string>>();
@@ -445,7 +465,8 @@ export const aiDrawingGame: GameHandler = {
     const state = session.gameState as AIDrawingState;
     console.log(`AI Drawing game started! Word: ${state.word}`);
 
-    hostTalk(session, io, "The word to draw is: " + state.word + "!");
+
+    hostTalk(session, io, getRandomWordPrompt(state.word));
 
     // Start countdown timer
     countdown = new CountdownTimer({
@@ -620,7 +641,7 @@ export const aiDrawingGame: GameHandler = {
 
       console.log(`Next round started! New word: ${state.word}`);
 
-      hostTalk(session, io, "Next round! The word to draw is: " + state.word + "!");
+      hostTalk(session, io, "Next round! " + getRandomWordPrompt(state.word));
 
       // Start countdown timer
       countdown = new CountdownTimer({
