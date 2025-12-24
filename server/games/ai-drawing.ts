@@ -268,6 +268,95 @@ let resultRevealInterval: NodeJS.Timeout | null = null;
 // Key: sessionId, Value: Record<playerId, PlayerDrawing>
 const drawingsStorage = new Map<string, Record<string, PlayerDrawing>>();
 
+/**
+ * Shared logic to reveal the next result in the sequence.
+ * Speaks the announcement, shows the drawing, and schedules the next reveal.
+ */
+async function revealNextResult(session: ServerGameSession, io: GameServer): Promise<void> {
+  const currentState = session.gameState as AIDrawingState;
+  if (!currentState || !currentState.results) {
+    console.log('[revealNextResult] No state or results');
+    if (resultRevealInterval) clearTimeout(resultRevealInterval);
+    return;
+  }
+
+  // Advance to next result
+  currentState.currentResultIndex++;
+
+  if (currentState.currentResultIndex < currentState.results.length) {
+    const currentResult = currentState.results[currentState.currentResultIndex];
+    console.log(`[revealNextResult] Revealing result ${currentState.currentResultIndex + 1}/${currentState.results.length}: ${currentResult.playerName}`);
+
+    // Send the drawing image for this result to TV
+    const storage = drawingsStorage.get(session.id);
+    if (storage && session.tvSocketId) {
+      const drawing = storage[currentResult.playerId];
+      if (drawing && drawing.imageData) {
+        console.log(`[revealNextResult] Sending drawing image for ${currentResult.playerName}`);
+        io.to(session.tvSocketId).emit('drawing:image', {
+          playerId: drawing.playerId,
+          imageData: drawing.imageData,
+        });
+      } else {
+        console.log(`[revealNextResult] No drawing data found for ${currentResult.playerName}`);
+      }
+    } else {
+      console.log(`[revealNextResult] No storage or TV socket. Storage: ${!!storage}, TV: ${session.tvSocketId}`);
+    }
+
+
+    // Broadcast the updated state with new currentResultIndex
+    broadcastSessionState(session, io);
+
+    // Prepare host message
+    var hostMessage = '';
+    if(currentState.currentResultIndex === 0) {
+      hostMessage = "And the winner is: " + currentResult.playerName + "! " + currentResult.reason;
+    } else {
+      const place = currentState.currentResultIndex + 1;
+      const suffix = (place % 10 === 1 && place % 100 !== 11) ? 'st' :
+                    (place % 10 === 2 && place % 100 !== 12) ? 'nd' :
+                    (place % 10 === 3 && place % 100 !== 13) ? 'rd' : 'th';
+      const placeName = place + suffix;
+      hostMessage = "In  " + placeName + " place is: " + currentResult.playerName + "! " + currentResult.reason;
+    }
+
+    // Speak the message and get speech duration
+    const speechInfo = await hostTalk(session, io, hostMessage);
+
+    // Emit timing info to TV for progress bar
+    if (speechInfo && session.tvSocketId) {
+      const durationMs = speechInfo.durationMs + 1000; // Include the 1 second padding
+      io.to(session.tvSocketId).emit('result:reveal-timing', {
+        resultIndex: currentState.currentResultIndex,
+        durationMs,
+      });
+    }
+
+
+
+    // If we've revealed all results, stop
+    if (currentState.currentResultIndex >= currentState.results.length - 1) {
+      console.log('[revealNextResult] All results revealed');
+      return;
+    }
+
+    // Schedule next reveal based on speech duration
+    if (speechInfo) {
+      const delayMs = speechInfo.durationMs + 1000; // Add 1 second padding after speech
+      console.log(`[revealNextResult] Scheduling next reveal in ${delayMs}ms (speech: ${speechInfo.durationMs}ms + 1000ms padding)`);
+      resultRevealInterval = setTimeout(() => revealNextResult(session, io), delayMs);
+    } else {
+      // Fallback to fixed interval if speech info not available
+      console.log(`[revealNextResult] No speech info, using default interval ${REVEAL_INTERVAL}ms`);
+      resultRevealInterval = setTimeout(() => revealNextResult(session, io), REVEAL_INTERVAL);
+    }
+  } else {
+    // Broadcast the updated state
+    broadcastSessionState(session, io);
+  }
+}
+
 export const aiDrawingGame: GameHandler = {
   id: 'ai-drawing',
   name: 'AI Drawing Contest',
@@ -353,7 +442,7 @@ export const aiDrawingGame: GameHandler = {
       countdown = null;
     }
     if (resultRevealInterval) {
-      clearInterval(resultRevealInterval);
+      clearTimeout(resultRevealInterval);
       resultRevealInterval = null;
     }
     // Clean up drawings storage
@@ -423,71 +512,14 @@ export const aiDrawingGame: GameHandler = {
 
       console.log(`GM ${playerId} skipping to next result reveal`);
 
-      // Clear the current interval and immediately reveal next result
+      // Clear the current timeout (not interval anymore)
       if (resultRevealInterval) {
-        clearInterval(resultRevealInterval);
+        clearTimeout(resultRevealInterval);
         resultRevealInterval = null;
       }
 
-      // Advance to next result
-      state.currentResultIndex++;
-
-      // Send the drawing image for this result to TV
-      if (state.currentResultIndex < state.results.length) {
-        const currentResult = state.results[state.currentResultIndex];
-        const storage = drawingsStorage.get(session.id);
-        if (storage && session.tvSocketId) {
-          const drawing = storage[currentResult.playerId];
-          if (drawing && drawing.imageData) {
-            console.log(`Sending drawing image for ${currentResult.playerName}`);
-            io.to(session.tvSocketId).emit('drawing:image', {
-              playerId: drawing.playerId,
-              imageData: drawing.imageData,
-            });
-          }
-        }
-      }
-
-      // Broadcast the updated state
-      broadcastSessionState(session, io);
-
-      // If we haven't revealed all results yet, restart the timer
-      if (state.currentResultIndex < state.results.length - 1) {
-        const revealNext = () => {
-          const currentState = session.gameState as AIDrawingState;
-          if (!currentState || !currentState.results) {
-            if (resultRevealInterval) clearInterval(resultRevealInterval);
-            return;
-          }
-
-          currentState.currentResultIndex++;
-
-          if (currentState.currentResultIndex < currentState.results.length) {
-            const currentResult = currentState.results[currentState.currentResultIndex];
-            const storage = drawingsStorage.get(session.id);
-            if (storage && session.tvSocketId) {
-              const drawing = storage[currentResult.playerId];
-              if (drawing && drawing.imageData) {
-                io.to(session.tvSocketId).emit('drawing:image', {
-                  playerId: drawing.playerId,
-                  imageData: drawing.imageData,
-                });
-              }
-            }
-          }
-
-          broadcastSessionState(session, io);
-
-          if (currentState.currentResultIndex >= currentState.results.length - 1) {
-            if (resultRevealInterval) {
-              clearInterval(resultRevealInterval);
-              resultRevealInterval = null;
-            }
-          }
-        };
-
-        resultRevealInterval = setInterval(revealNext, state.revealInterval);
-      }
+      // Trigger an immediate reveal of the next result using shared function
+      revealNextResult(session, io);
     }
   },
 
@@ -517,90 +549,18 @@ export const aiDrawingGame: GameHandler = {
   },
 };
 
-function startResultReveal(session: ServerGameSession, io: GameServer) {
+async function startResultReveal(session: ServerGameSession, io: GameServer) {
   const state = session.gameState as AIDrawingState;
   if (!state || !state.results || state.results.length === 0) return;
 
-  console.log('Starting result reveal timer...');
-
-  // Function to reveal the next result
-  const revealNext = () => {
-    const currentState = session.gameState as AIDrawingState;
-    if (!currentState || !currentState.results) {
-      console.log('[revealNext] No state or results, stopping interval');
-      if (resultRevealInterval) clearInterval(resultRevealInterval);
-      return;
-    }
-
-    // Advance to next result
-    currentState.currentResultIndex++;
-
-
-    // console.log(`[revealNext] Revealing result ${currentResult.playerName} ${currentState.currentResultIndex + 1}/${currentState.results.length}`);
-    // console.log(`[revealNext] currentResultIndex is now: ${currentState.currentResultIndex}`);
-
-    // Send the drawing image for this result to TV
-    if (currentState.currentResultIndex < currentState.results.length) {
-      const currentResult = currentState.results[currentState.currentResultIndex];
-      console.log(`[revealNext] Current result:`, currentResult);
-
-
-      var hostMessage = '';
-      if(currentState.currentResultIndex === 0) {
-        hostMessage = "And the winner is: " + currentResult.playerName + "! " + currentResult.reason;
-      } else {
-        const place = currentState.currentResultIndex + 1;
-        const suffix = (place % 10 === 1 && place % 100 !== 11) ? 'st' :
-                      (place % 10 === 2 && place % 100 !== 12) ? 'nd' :
-                      (place % 10 === 3 && place % 100 !== 13) ? 'rd' : 'th';
-        const placeName = place + suffix;
-        hostMessage = "In  " + placeName + " place is: " + currentResult.playerName + "! " + currentResult.reason;
-      }
-      hostTalk(session, io, hostMessage);
-
-      const storage = drawingsStorage.get(session.id);
-      if (storage && session.tvSocketId) {
-        const drawing = storage[currentResult.playerId];
-        if (drawing && drawing.imageData) {
-          console.log(`[revealNext] Sending drawing image for ${currentResult.playerName}`);
-          io.to(session.tvSocketId).emit('drawing:image', {
-            playerId: drawing.playerId,
-            imageData: drawing.imageData,
-          });
-        } else {
-          console.log(`[revealNext] No drawing data found for ${currentResult.playerName}`);
-        }
-      } else {
-        console.log(`[revealNext] No storage or TV socket. Storage: ${!!storage}, TV: ${session.tvSocketId}`);
-      }
-    }
-
-    // Broadcast the updated state with new currentResultIndex
-    console.log(`[revealNext] Broadcasting state with currentResultIndex: ${currentState.currentResultIndex}`);
-    broadcastSessionState(session, io);
-
-    // If we've revealed all results, stop the timer
-    if (currentState.currentResultIndex >= currentState.results.length - 1) {
-      console.log('[revealNext] All results revealed, stopping timer');
-      if (resultRevealInterval) {
-        clearInterval(resultRevealInterval);
-        resultRevealInterval = null;
-      }
-    }
-  };
+  console.log('[startResultReveal] Starting result reveal...');
+  console.log(`[startResultReveal] Total results to reveal: ${state.results.length}`);
 
   // Start with -1 and immediately reveal the first result
   state.currentResultIndex = -1;
-  console.log(`[startResultReveal] Initial currentResultIndex set to: ${state.currentResultIndex}`);
-  console.log(`[startResultReveal] Total results to reveal: ${state.results.length}`);
 
-  // Reveal first result immediately
-  console.log('[startResultReveal] Calling revealNext() immediately...');
-  revealNext();
-
-  // Then continue revealing every revealInterval
-  console.log(`[startResultReveal] Setting up interval to reveal every ${state.revealInterval}ms`);
-  resultRevealInterval = setInterval(revealNext, state.revealInterval);
+  // Reveal first result immediately using shared function
+  await revealNextResult(session, io);
 }
 
 async function handleJudging(session: ServerGameSession, io: GameServer) {

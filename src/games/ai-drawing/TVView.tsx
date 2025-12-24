@@ -33,6 +33,7 @@ function TVView({ players, gameState, socket }: TVViewProps) {
   const [localTimeRemaining, setLocalTimeRemaining] = useState(state?.timeRemaining || 0);
   const [drawingImages, setDrawingImages] = useState<Record<string, string>>({});
   const [revealProgress, setRevealProgress] = useState(0);
+  const [currentRevealDuration, setCurrentRevealDuration] = useState<number>(8000); // Default fallback
   const lastResultIndexRef = useRef<number>(-2);
 
   // Debug logging
@@ -63,6 +64,22 @@ function TVView({ players, gameState, socket }: TVViewProps) {
     };
   }, [socket]);
 
+  // Listen for result reveal timing updates
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleRevealTiming = (data: { resultIndex: number; durationMs: number }) => {
+      console.log('[TVView] Received reveal timing:', data);
+      setCurrentRevealDuration(data.durationMs);
+    };
+
+    socket.on('result:reveal-timing', handleRevealTiming);
+
+    return () => {
+      socket.off('result:reveal-timing', handleRevealTiming);
+    };
+  }, [socket]);
+
   // Clear images when game restarts
   useEffect(() => {
     if (state?.phase === 'drawing') {
@@ -88,7 +105,7 @@ function TVView({ players, gameState, socket }: TVViewProps) {
     return () => clearInterval(interval);
   }, [state?.phase]);
 
-  // Progress bar for result reveals (5 seconds)
+  // Progress bar for result reveals - uses dynamic speech duration
   useEffect(() => {
     if (state?.phase !== 'results' || !state?.results || state.results.length === 0) {
       setRevealProgress(0);
@@ -110,10 +127,9 @@ function TVView({ players, gameState, socket }: TVViewProps) {
       return;
     }
 
-    // Progress from 0 to 100 over the reveal interval (from server state)
-    const REVEAL_INTERVAL_MS = state.revealInterval;
+    // Progress from 0 to 100 over the current reveal duration (speech duration + padding)
     const TICK_INTERVAL_MS = 50; // Update every 50ms for smooth animation
-    const progressPerTick = (100 * TICK_INTERVAL_MS) / REVEAL_INTERVAL_MS;
+    const progressPerTick = (100 * TICK_INTERVAL_MS) / currentRevealDuration;
 
     const interval = setInterval(() => {
       setRevealProgress((prev) => {
@@ -123,7 +139,7 @@ function TVView({ players, gameState, socket }: TVViewProps) {
     }, TICK_INTERVAL_MS);
 
     return () => clearInterval(interval);
-  }, [state?.phase, state?.currentResultIndex, state?.results]);
+  }, [state?.phase, state?.currentResultIndex, state?.results, currentRevealDuration]);
 
   if (!state) {
     return (

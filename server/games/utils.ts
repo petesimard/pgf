@@ -156,47 +156,53 @@ export function broadcastSessionState(session: ServerGameSession, io: GameServer
 /**
  * Make the game host speak to the TV client with text-to-speech.
  *
- * This function runs in the background and does not block execution.
+ * This function generates speech and returns information about the audio,
+ * including its duration. Await this function to coordinate timing based
+ * on speech length.
+ *
  * The avatar host will appear on screen and speak the message.
- * If TTS fails, the text will still be displayed (silent mode).
+ * If TTS fails, the text will still be displayed (silent mode) and
+ * an estimated duration will be returned.
  *
  * @param session - The game session
  * @param io - Socket.IO server instance
  * @param message - The message text to speak
+ * @returns Speech information including duration in milliseconds
  *
  * @example
  * ```typescript
  * import { hostTalk } from './utils.js';
  *
- * onStart(session, io) {
- *   hostTalk(session, io, "Welcome to the game!"); // Fire and forget
- *   // ... rest of game initialization continues immediately
- * }
+ * // Wait for speech to complete and get duration
+ * const speechInfo = await hostTalk(session, io, "Welcome to the game!");
+ * console.log(`Speech will take ${speechInfo.durationMs}ms`);
+ *
+ * // Or fire and forget (backwards compatible)
+ * hostTalk(session, io, "Welcome!");
  * ```
  */
-export function hostTalk(
+export async function hostTalk(
   session: ServerGameSession,
   io: GameServer,
   message: string
-): void {
+): Promise<import('../utils/elevenlabs.js').SpeechInfo | null> {
   const tvSocketId = session.tvSocketId;
 
   if (!tvSocketId) {
     console.warn('[hostTalk] No TV connected to session', session.id);
-    return;
+    return null;
   }
 
   console.log(`[hostTalk] Speaking to session ${session.id}: "${message}"`);
 
-  // Fire and forget - run in background
-  (async () => {
-    try {
-      const { streamSpeechToTV } = await import('../utils/elevenlabs.js');
-      await streamSpeechToTV(io, tvSocketId, message);
-    } catch (error) {
-      console.error('[hostTalk] Failed to generate speech:', error);
-    }
-  })();
+  try {
+    const { streamSpeechToTV } = await import('../utils/elevenlabs.js');
+    const speechInfo = await streamSpeechToTV(io, tvSocketId, message);
+    return speechInfo;
+  } catch (error) {
+    console.error('[hostTalk] Failed to generate speech:', error);
+    return null;
+  }
 }
 
 /**
