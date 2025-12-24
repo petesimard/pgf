@@ -1,5 +1,5 @@
 import type { GameHandler, ServerGameSession, GameServer } from '../types.js';
-import { broadcastSessionState, CountdownTimer } from './utils.js';
+import { broadcastSessionState, CountdownTimer, getAiText } from './utils.js';
 import { StaticDrawingWordProvider, type DrawingWordProvider } from './drawing-word-providers.js';
 import OpenAI from 'openai';
 import sharp from 'sharp';
@@ -235,7 +235,7 @@ Players: ${labelMap.map((m) => `${m.letter}: ${m.playerName}`).join(', ')}`;
 
   console.log('Calling OpenAI API...');
   const completion = await openai.chat.completions.create({
-    model: process.env.OPENAI_MODEL || 'gpt-4o-mini',
+    model: process.env.OPENAI_MODEL_DRAWINGJUDGE || 'gpt-4o-mini',
     messages: [
       {
         role: 'user',
@@ -406,7 +406,7 @@ export const aiDrawingGame: GameHandler = {
   minPlayers: 2,
   maxPlayers: 8,
 
-  onStart(session, io) {
+  async onStart(session, io) {
     const drawings = initializeDrawings(session);
 
 
@@ -445,7 +445,7 @@ export const aiDrawingGame: GameHandler = {
     const state = session.gameState as AIDrawingState;
     console.log(`AI Drawing game started! Word: ${state.word}`);
 
-    hostTalk(session, io, "Draw the word: " + state.word + "!");
+    hostTalk(session, io, "The word to draw is: " + state.word + "!");
 
     // Start countdown timer
     countdown = new CountdownTimer({

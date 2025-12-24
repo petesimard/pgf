@@ -19,7 +19,7 @@ export interface GameHandler {
   minPlayers: number;
   maxPlayers: number;
 
-  onStart: (session: ServerGameSession, io: GameServer) => void;
+  onStart: (session: ServerGameSession, io: GameServer) => void | Promise<void>;
   onEnd: (session: ServerGameSession, io: GameServer) => void;
   onAction: (session: ServerGameSession, io: GameServer, playerId: string, action: { type: string; payload?: unknown }) => void | Promise<void>;
   onPlayerJoin?: (session: ServerGameSession, io: GameServer, player: Player) => void;

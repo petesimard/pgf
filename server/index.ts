@@ -393,7 +393,7 @@ io.on('connection', (socket: GameSocket) => {
   });
 
   // Game Master starts the game
-  socket.on('game:start', () => {
+  socket.on('game:start', async () => {
     const mapping = socketToSession.get(socket.id);
     if (!mapping || mapping.isTV) return;
 
@@ -417,7 +417,7 @@ io.on('connection', (socket: GameSocket) => {
     session.showQRCode = false;
 
     console.log(`Game started: ${game.name}`);
-    game.onStart(session, io);
+    await game.onStart(session, io);
 
     broadcastSessionState(session);
   });
