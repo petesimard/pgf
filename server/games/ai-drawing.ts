@@ -73,6 +73,48 @@ function initializeDrawings(session: ServerGameSession): Record<string, PlayerDr
   return drawings;
 }
 
+/**
+ * Converts a non-square image to square by adding white borders while keeping it centered
+ */
+async function makeImageSquare(imageDataUrl: string): Promise<string> {
+  // Convert base64 to buffer
+  const base64Data = imageDataUrl.replace(/^data:image\/png;base64,/, '');
+  const imageBuffer = Buffer.from(base64Data, 'base64');
+
+  // Get the original image dimensions
+  const image = sharp(imageBuffer);
+  const metadata = await image.metadata();
+  const width = metadata.width || 0;
+  const height = metadata.height || 0;
+
+  // If already square, return as-is
+  if (width === height) {
+    return imageDataUrl;
+  }
+
+  // Make the image square by adding white borders
+  const maxDim = Math.max(width, height);
+  const extendLeft = Math.floor((maxDim - width) / 2);
+  const extendRight = Math.ceil((maxDim - width) / 2);
+  const extendTop = Math.floor((maxDim - height) / 2);
+  const extendBottom = Math.ceil((maxDim - height) / 2);
+
+  const squareBuffer = await image
+    .extend({
+      top: extendTop,
+      bottom: extendBottom,
+      left: extendLeft,
+      right: extendRight,
+      background: { r: 255, g: 255, b: 255, alpha: 1 },
+    })
+    .png()
+    .toBuffer();
+
+  // Convert back to base64 data URL
+  const squareBase64 = squareBuffer.toString('base64');
+  return `data:image/png;base64,${squareBase64}`;
+}
+
 async function createCollage(drawings: PlayerDrawing[]): Promise<Buffer> {
   const CANVAS_SIZE = 400;
   const LABEL_HEIGHT = 60;
@@ -99,11 +141,11 @@ async function createCollage(drawings: PlayerDrawing[]): Promise<Buffer> {
     const row = Math.floor(i / COLS);
     const label = String.fromCharCode(65 + i) + ': ' + drawings[i].playerName; // A, B, C, etc.
 
-    // Convert base64 to buffer
+    // Convert base64 to buffer (image is already square from makeImageSquare)
     const base64Data = drawings[i].imageData.replace(/^data:image\/png;base64,/, '');
     const imageBuffer = Buffer.from(base64Data, 'base64');
 
-    // Resize drawing to fit (leaving room for 1px border on each side)
+    // Resize the square image to fit (leaving room for 1px border on each side)
     const resizedImage = await sharp(imageBuffer)
       .resize(CANVAS_SIZE - 2, CANVAS_SIZE - 2, { fit: 'contain', background: { r: 255, g: 255, b: 255, alpha: 1 } })
       .extend({
@@ -452,7 +494,7 @@ export const aiDrawingGame: GameHandler = {
     session.gameState = null;
   },
 
-  onAction(session, io, playerId, action) {
+  async onAction(session, io, playerId, action) {
     const state = session.gameState as AIDrawingState;
     if (!state) return;
 
@@ -460,10 +502,13 @@ export const aiDrawingGame: GameHandler = {
       const payload = action.payload as { imageData: string };
       if (!state.drawings[playerId]) return;
 
-      // Store imageData in separate storage
+      // Transform image to square before storing
+      const squareImageData = await makeImageSquare(payload.imageData);
+
+      // Store square imageData in separate storage
       const storage = drawingsStorage.get(session.id);
       if (storage && storage[playerId]) {
-        storage[playerId].imageData = payload.imageData;
+        storage[playerId].imageData = squareImageData;
         storage[playerId].submitted = true;
       }
 

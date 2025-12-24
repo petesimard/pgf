@@ -21,7 +21,7 @@ export interface GameHandler {
 
   onStart: (session: ServerGameSession, io: GameServer) => void;
   onEnd: (session: ServerGameSession, io: GameServer) => void;
-  onAction: (session: ServerGameSession, io: GameServer, playerId: string, action: { type: string; payload?: unknown }) => void;
+  onAction: (session: ServerGameSession, io: GameServer, playerId: string, action: { type: string; payload?: unknown }) => void | Promise<void>;
   onPlayerJoin?: (session: ServerGameSession, io: GameServer, player: Player) => void;
   onPlayerLeave?: (session: ServerGameSession, io: GameServer, player: Player) => void;
 }
