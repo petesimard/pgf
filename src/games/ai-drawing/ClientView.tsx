@@ -41,6 +41,25 @@ function ClientView({ player, gameState, sendAction, isGameMaster, endGame }: Cl
 
   const playerDrawing = state?.drawings[player.id];
 
+  // Track the current word to detect round changes
+  const previousWordRef = useRef<string | null>(null);
+  const [editorKey, setEditorKey] = useState(0);
+
+  // Recreate editor when a new round starts (word changes)
+  useEffect(() => {
+    if (!state?.word) return;
+
+    // If the word changed and we're in drawing phase, recreate the editor
+    if (previousWordRef.current !== null && previousWordRef.current !== state.word && state.phase === 'drawing') {
+      console.log('[ClientView] New round detected, recreating editor');
+      // Force editor recreation by incrementing key
+      setEditorKey((prev) => prev + 1);
+      setHasSubmitted(false);
+    }
+
+    previousWordRef.current = state.word;
+  }, [state?.word, state?.phase]);
+
   // Sync local timer with server state
   useEffect(() => {
     if (state?.timeRemaining !== undefined) {
@@ -61,7 +80,13 @@ function ClientView({ player, gameState, sendAction, isGameMaster, endGame }: Cl
 
   useEffect(() => {
     const container = containerRef.current;
-    if (!container || editorRef.current) return;
+    if (!container) return;
+
+    // Clean up existing editor if it exists
+    if (editorRef.current) {
+      editorRef.current.remove();
+      editorRef.current = null;
+    }
 
     // Create js-draw editor with white background
     const editor = new Editor(container, {
@@ -111,7 +136,7 @@ function ClientView({ player, gameState, sendAction, isGameMaster, endGame }: Cl
         editorRef.current = null;
       }
     };
-  }, []);
+  }, [editorKey]); // Recreate when editorKey changes
 
   const handleSubmit = useCallback(() => {
     const editor = editorRef.current;
@@ -259,14 +284,24 @@ function ClientView({ player, gameState, sendAction, isGameMaster, endGame }: Cl
               </Button>
             )}
 
-            {/* End Game button - only show when all results revealed */}
-            {allRevealed && endGame && (
-              <Button
-                onClick={endGame}
-                className="w-full h-12 bg-destructive hover:bg-destructive/90 text-white"
-              >
-                End Game
-              </Button>
+            {/* Next Round and End Game buttons - only show when all results revealed */}
+            {allRevealed && (
+              <>
+                <Button
+                  onClick={() => sendAction({ type: 'next-round' })}
+                  className="w-full h-12 bg-primary hover:bg-primary/90 text-white"
+                >
+                  Next Round
+                </Button>
+                {endGame && (
+                  <Button
+                    onClick={endGame}
+                    className="w-full h-12 bg-destructive hover:bg-destructive/90 text-white"
+                  >
+                    End Game
+                  </Button>
+                )}
+              </>
             )}
           </div>
         )}

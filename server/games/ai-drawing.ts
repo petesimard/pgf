@@ -565,6 +565,89 @@ export const aiDrawingGame: GameHandler = {
 
       // Trigger an immediate reveal of the next result using shared function
       revealNextResult(session, io);
+    } else if (action.type === 'next-round') {
+      // Only Game Master can start next round
+      const player = session.players.find((p) => p.id === playerId);
+      if (!player || !player.isGameMaster) {
+        console.log(`Player ${playerId} attempted to start next round but is not GM`);
+        return;
+      }
+
+      // Only allow starting next round after all results are revealed
+      if (state.phase !== 'results' || !state.results || state.results.length === 0) {
+        console.log('Next round attempted but not in results phase');
+        return;
+      }
+
+      if (state.currentResultIndex < state.results.length - 1) {
+        console.log('Next round attempted but not all results revealed yet');
+        return;
+      }
+
+      console.log(`GM ${playerId} starting next round`);
+
+      // Clear any existing timers
+      if (countdown) {
+        countdown.stop();
+        countdown = null;
+      }
+      if (resultRevealInterval) {
+        clearTimeout(resultRevealInterval);
+        resultRevealInterval = null;
+      }
+
+      // Reset to a new drawing round
+      const drawings = initializeDrawings(session);
+      const word = selectRandomWord(session.id);
+
+      if (!word) {
+        console.error('No words available for next round!');
+        // Fallback to a default word
+        state.word = 'Cat';
+      } else {
+        state.word = word;
+      }
+
+      state.timeRemaining = DRAWING_TIME;
+      state.drawings = drawings;
+      state.phase = 'drawing';
+      state.results = null;
+      state.collageUrl = null;
+      state.currentResultIndex = -1;
+
+      // Update storage with new drawings
+      drawingsStorage.set(session.id, drawings);
+
+      console.log(`Next round started! New word: ${state.word}`);
+
+      hostTalk(session, io, "Next round! The word to draw is: " + state.word + "!");
+
+      // Start countdown timer
+      countdown = new CountdownTimer({
+        duration: DRAWING_TIME,
+        onTick: (timeRemaining) => {
+          const currentState = session.gameState as AIDrawingState;
+          if (currentState.phase !== 'drawing') {
+            countdown?.stop();
+            return;
+          }
+          currentState.timeRemaining = timeRemaining;
+          broadcastSessionState(session, io);
+        },
+        onComplete: () => {
+          const currentState = session.gameState as AIDrawingState;
+          console.log('Time is up! Auto-submitting drawings...');
+          currentState.phase = 'judging';
+          broadcastSessionState(session, io);
+          handleJudging(session, io).catch((error) => {
+            console.error('Unhandled error in handleJudging (timer):', error);
+          });
+        },
+      });
+      countdown.start();
+
+      // Broadcast the new round state
+      broadcastSessionState(session, io);
     }
   },
 

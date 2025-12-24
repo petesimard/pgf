@@ -78,10 +78,10 @@ export function useSocket(): UseSocketReturn {
     });
 
     socket.on('session:state', (newSession) => {
-      console.log('[useSocket] Received session:state:', {
-        currentGameId: newSession.currentGameId,
-        gameState: newSession.gameState,
-      });
+      // console.log('[useSocket] Received session:state:', {
+      //   currentGameId: newSession.currentGameId,
+      //   gameState: newSession.gameState,
+      // });
       setSession(newSession);
 
       // Save TV zoom to localStorage whenever it changes (for TV clients)
