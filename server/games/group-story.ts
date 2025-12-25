@@ -47,6 +47,7 @@ async function generateQuestions(playerCount: number, previousStory?: string): P
     const prompt = `${contextPrompt}Generate exactly ${playerCount} unique creative questions about different aspects of a story.
 Each question should ask for a SHORT answer (1-3 words).
 Questions should cover different aspects like: setting, characters, events, themes, details, objects, time, mood.
+Focus on the most important/basic questions first.
 Return ONLY a JSON object with this structure: {"questions": ["question 1", "question 2", ...]}\n\nExamples:\n- "What is the main character's name?"\n- "Where does this take place?"\n- "What time of day is it?"\n- "What object is important?"\n- "What is the mood?"`;
 
     console.log(`[GroupStory] Generating ${playerCount} questions with OpenAI...`);
@@ -138,7 +139,7 @@ ${previousStory}
 New details from players:
 ${questionsAndAnswers}
 
-Write 2-3 paragraphs continuing the story in an engaging way. Incorporate the new details naturally.
+Write 1-2 paragraphs continuing the story in an engaging way. Incorporate the new details naturally.
 Also create a detailed visual description for a DALL-E image that captures this story segment.
 
 Return ONLY valid JSON with this structure:
@@ -147,7 +148,7 @@ Return ONLY valid JSON with this structure:
 
 ${questionsAndAnswers}
 
-Write 2-3 paragraphs that weave these details into a cohesive, creative narrative.
+Write 1-2 paragraphs that weave these details into a cohesive, creative narrative.
 Also create a detailed visual description for a DALL-E image that captures the essence of this story.
 
 Return ONLY valid JSON with this structure:
