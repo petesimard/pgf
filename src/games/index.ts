@@ -1,11 +1,13 @@
 import type { GameRegistration } from './types';
 import { aiDrawingGame } from './ai-drawing';
 import { wordScrambleGame } from './word-scramble';
+import { groupStoryGame } from './group-story';
 
 // Game registry - add new games here
 const games: GameRegistration[] = [
   aiDrawingGame,
   wordScrambleGame,
+  groupStoryGame,
 ];
 
 // Create a map for quick lookup

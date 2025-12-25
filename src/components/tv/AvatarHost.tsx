@@ -13,6 +13,7 @@ interface SpeechState {
   audioChunks: Uint8Array[];
   isPlaying: boolean;
   isComplete: boolean;
+  showBubble: boolean;
 }
 
 function AvatarHost({ socket }: AvatarHostProps) {
@@ -152,7 +153,7 @@ function AvatarHost({ socket }: AvatarHostProps) {
   useEffect(() => {
     if (!socket) return;
 
-    const handleSpeakStart = (data: { messageId: string; text: string }) => {
+    const handleSpeakStart = (data: { messageId: string; text: string; showBubble?: boolean }) => {
       console.log('[AvatarHost] Speech started:', data);
 
       // Cancel current speech if exists
@@ -167,6 +168,7 @@ function AvatarHost({ socket }: AvatarHostProps) {
         audioChunks: [],
         isPlaying: false,
         isComplete: false,
+        showBubble: data.showBubble ?? true, // Default to true if not specified
       });
       setIsVisible(true);
       setIsFadingOut(false);
@@ -273,9 +275,11 @@ function AvatarHost({ socket }: AvatarHostProps) {
           className="avatar-image"
         />
       </div>
-      <div className="speech-bubble">
-        <div className="speech-text">{currentSpeech.text}</div>
-      </div>
+      {currentSpeech.showBubble && (
+        <div className="speech-bubble">
+          <div className="speech-text">{currentSpeech.text}</div>
+        </div>
+      )}
     </div>
   );
 }

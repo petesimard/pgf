@@ -167,6 +167,7 @@ export function broadcastSessionState(session: ServerGameSession, io: GameServer
  * @param session - The game session
  * @param io - Socket.IO server instance
  * @param message - The message text to speak
+ * @param options - Optional speech options (showBubble: whether to show speech bubble, defaults to true)
  * @returns Speech information including duration in milliseconds
  *
  * @example
@@ -179,12 +180,16 @@ export function broadcastSessionState(session: ServerGameSession, io: GameServer
  *
  * // Or fire and forget (backwards compatible)
  * hostTalk(session, io, "Welcome!");
+ *
+ * // Without speech bubble (avatar only)
+ * hostTalk(session, io, "Reading the story...", { showBubble: false });
  * ```
  */
 export async function hostTalk(
   session: ServerGameSession,
   io: GameServer,
-  message: string
+  message: string,
+  options?: { showBubble?: boolean }
 ): Promise<import('../utils/elevenlabs.js').SpeechInfo | null> {
   const tvSocketId = session.tvSocketId;
 
@@ -197,7 +202,7 @@ export async function hostTalk(
 
   try {
     const { streamSpeechToTV } = await import('../utils/elevenlabs.js');
-    const speechInfo = await streamSpeechToTV(io, tvSocketId, message);
+    const speechInfo = await streamSpeechToTV(io, tvSocketId, message, options);
     return speechInfo;
   } catch (error) {
     console.error('[hostTalk] Failed to generate speech:', error);

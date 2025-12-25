@@ -13,6 +13,7 @@ interface SpeechOptions {
   voice?: string;
   stability?: number;
   similarity_boost?: number;
+  showBubble?: boolean;
 }
 
 export interface SpeechInfo {
@@ -64,7 +65,7 @@ export async function streamSpeechToTV(
     // Estimate duration based on text length (average speaking rate ~150 words/min = 2.5 words/sec)
     const wordCount = text.split(/\s+/).length;
     const estimatedDurationMs = Math.round((wordCount / 2.5) * 1000);
-    io.to(tvSocketId).emit('host:speak-start', { messageId, text, durationMs: estimatedDurationMs });
+    io.to(tvSocketId).emit('host:speak-start', { messageId, text, durationMs: estimatedDurationMs, showBubble: options?.showBubble });
     io.to(tvSocketId).emit('host:speak-error', {
       messageId,
       error: 'ElevenLabs API key not configured',
@@ -88,7 +89,7 @@ export async function streamSpeechToTV(
 
     // Emit start event with text and estimated duration (shows avatar immediately)
     console.log(`[ElevenLabs] Starting speech: "${text.substring(0, 50)}${text.length > 50 ? '...' : ''}"`);
-    io.to(tvSocketId).emit('host:speak-start', { messageId, text, durationMs: estimatedDurationMs });
+    io.to(tvSocketId).emit('host:speak-start', { messageId, text, durationMs: estimatedDurationMs, showBubble: options?.showBubble });
 
     // Get voice ID from env or use default (Rachel)
     const voiceId = options?.voice || process.env.ELEVENLABS_VOICE_ID || '21m00Tcm4TlvDq8ikWAM';
