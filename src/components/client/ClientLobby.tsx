@@ -33,12 +33,32 @@ function ClientLobby({ session, player, games, onSelectGame, onStartGame, error,
   const [localZoom, setLocalZoom] = useState(session.tvZoom);
   const [isDragging, setIsDragging] = useState(false);
 
+  // Loading state for game selection
+  const [loadingGameId, setLoadingGameId] = useState<string | null>(null);
+
+  // Loading state for starting game
+  const [isStartingGame, setIsStartingGame] = useState(false);
+
   // Sync local zoom with session zoom only when not actively dragging
   useEffect(() => {
     if (!isDragging) {
       setLocalZoom(session.tvZoom);
     }
   }, [session.tvZoom, isDragging]);
+
+  // Clear loading state when game is selected
+  useEffect(() => {
+    if (loadingGameId && session.currentGameId === loadingGameId) {
+      setLoadingGameId(null);
+    }
+  }, [session.currentGameId, loadingGameId]);
+
+  // Clear starting game loading state when session status changes to playing
+  useEffect(() => {
+    if (isStartingGame && session.status === 'playing') {
+      setIsStartingGame(false);
+    }
+  }, [session.status, isStartingGame]);
 
   return (
     <div className="min-h-screen flex flex-col p-4 max-w-lg mx-auto bg-background">
@@ -77,38 +97,62 @@ function ClientLobby({ session, player, games, onSelectGame, onStartGame, error,
             Select a Game
           </h3>
           <div className="flex flex-col gap-4 my-4">
-            {games.map((game) => (
-              <Card
-                key={game.id}
-                onClick={() => onSelectGame(game.id)}
-                className={cn(
-                  "p-4 px-5 bg-card border-3 rounded-2xl cursor-pointer transition-all shadow-playful hover:-translate-y-0.5 hover:shadow-playful-lg hover:border-primary",
-                  session.currentGameId === game.id && "border-primary shadow-playful-lg"
-                )}
-              >
-                <h3 className="text-xl mb-1.5 text-foreground font-extrabold mt-0">
-                  {game.name}
-                </h3>
-                <p className="text-base text-muted-foreground font-semibold m-0">
-                  {game.description}
-                </p>
-                <p className="text-sm text-muted font-bold mt-1.5">
-                  {game.minPlayers}-{game.maxPlayers} players
-                </p>
-              </Card>
-            ))}
+            {games.map((game) => {
+              const isLoading = loadingGameId === game.id;
+              const isSelected = session.currentGameId === game.id;
+
+              return (
+                <Card
+                  key={game.id}
+                  onClick={() => {
+                    setLoadingGameId(game.id);
+                    onSelectGame(game.id);
+                  }}
+                  className={cn(
+                    "p-4 px-5 bg-card border-3 rounded-2xl cursor-pointer transition-all shadow-playful hover:-translate-y-0.5 hover:shadow-playful-lg hover:border-primary relative",
+                    isSelected && "border-primary shadow-playful-lg",
+                    isLoading && "opacity-75"
+                  )}
+                >
+                  {isLoading && (
+                    <div className="absolute inset-0 flex items-center justify-center bg-card/80 rounded-2xl">
+                      <div className="w-8 h-8 border-[3px] border-muted border-t-primary rounded-full animate-spin"></div>
+                    </div>
+                  )}
+                  <h3 className="text-xl mb-1.5 text-foreground font-extrabold mt-0">
+                    {game.name}
+                  </h3>
+                  <p className="text-base text-muted-foreground font-semibold m-0">
+                    {game.description}
+                  </p>
+                  <p className="text-sm text-muted font-bold mt-1.5">
+                    {game.minPlayers}-{game.maxPlayers} players
+                  </p>
+                </Card>
+              );
+            })}
           </div>
 
           {selectedGame && (
             <Button
-              onClick={onStartGame}
-              disabled={!canStart}
+              onClick={() => {
+                setIsStartingGame(true);
+                onStartGame();
+              }}
+              disabled={!canStart || isStartingGame}
               size="lg"
-              className="w-full mt-4 text-xl font-bold uppercase tracking-wide rounded-full border-3 shadow-playful hover:shadow-playful-lg hover:-translate-y-0.5 active:translate-y-0.5 active:shadow-playful-sm bg-gradient-to-b from-primary to-[#4bc4ae]"
+              className="w-full mt-4 text-xl font-bold uppercase tracking-wide rounded-full border-3 shadow-playful hover:shadow-playful-lg hover:-translate-y-0.5 active:translate-y-0.5 active:shadow-playful-sm bg-gradient-to-b from-primary to-[#4bc4ae] relative"
             >
-              {canStart
-                ? `Start ${selectedGame.name}`
-                : `Need ${minPlayersRequired - activePlayers} more player(s)`}
+              {isStartingGame ? (
+                <span className="flex items-center justify-center gap-2">
+                  <div className="w-5 h-5 border-[3px] border-white/30 border-t-white rounded-full animate-spin"></div>
+                  Starting...
+                </span>
+              ) : canStart ? (
+                `Start ${selectedGame.name}`
+              ) : (
+                `Need ${minPlayersRequired - activePlayers} more player(s)`
+              )}
             </Button>
           )}
 

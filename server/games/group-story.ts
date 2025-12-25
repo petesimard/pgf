@@ -14,7 +14,7 @@ export interface GroupStoryState {
   errorMessage?: string;
 }
 
-const ANSWERING_TIME = 20; // seconds
+const ANSWERING_TIME = 30; // seconds
 
 // Module-level timer for answering phase
 let answerTimer: CountdownTimer | null = null;
@@ -139,7 +139,7 @@ ${previousStory}
 New details from players:
 ${questionsAndAnswers}
 
-Write 1-2 paragraphs continuing the story in an engaging way. Incorporate the new details naturally.
+Write one paragraph continuing the story in an engaging way. Incorporate the new details naturally.
 Also create a detailed visual description for a DALL-E image that captures this story segment.
 
 Return ONLY valid JSON with this structure:
@@ -148,7 +148,7 @@ Return ONLY valid JSON with this structure:
 
 ${questionsAndAnswers}
 
-Write 1-2 paragraphs that weave these details into a cohesive, creative narrative.
+Write one paragraph that weaves these details into a cohesive, creative narrative.
 Also create a detailed visual description for a DALL-E image that captures the essence of this story.
 
 Return ONLY valid JSON with this structure:
@@ -171,7 +171,7 @@ Return ONLY valid JSON with this structure:
           schema: {
             type: 'object',
             properties: {
-              text: { type: 'string', description: 'The story text (2-3 paragraphs)' },
+              text: { type: 'string', description: 'The story text (one paragraph)' },
               imagePrompt: { type: 'string', description: 'Detailed image prompt' },
             },
             required: ['text', 'imagePrompt'],
@@ -354,7 +354,9 @@ export const groupStoryGame: GameHandler = {
         return;
       }
 
-      const answer = action.payload?.answer;
+      const answer = (action.payload && typeof (action.payload as any).answer === 'string')
+        ? (action.payload as any).answer
+        : undefined;
       if (typeof answer !== 'string') {
         console.log('[GroupStory] Invalid answer payload');
         return;
