@@ -148,7 +148,7 @@ function TVView({ players, gameState, socket }: TVViewProps) {
               )}
 
               {/* Story Text - flows around image */}
-              <p className="text-2xl leading-relaxed text-foreground whitespace-pre-wrap">
+              <p className="text-lg leading-relaxed text-foreground whitespace-pre-wrap">
                 {state.currentStory.text}
               </p>
 
