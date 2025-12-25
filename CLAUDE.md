@@ -204,19 +204,13 @@ This creates all the boilerplate files with TODOs marking where to add your game
    export const games: GameRegistration[] = [buzzRaceGame, yourGame];
    ```
 
-### Testing Multi-Device Setup
+**Testing**
+Assume the dev server is already running. Do not try to start or restart it
 
-**With Physical Devices**:
-1. Start dev server: `npm run dev`
-2. Open TV view: `http://localhost:5173/tv`
-3. On phone (same network): Scan QR code or navigate to displayed URL
-4. First phone becomes Game Master and sees game selection controls
-
-**With Claude Chrome Extension** (recommended for development):
-1. Start dev server: `npm run dev`
-2. Ask Claude to navigate to `http://localhost:5173/tv`
-3. Ask Claude to open additional tabs to simulate phone clients
-4. Claude can interact with the UI, test flows, and provide visual feedback
+**Testing With Claude Chrome Extension** (recommended for development):
+1. Ask Claude to navigate to `http://localhost:5173/tv`
+2. Ask Claude to open additional tabs to simulate phone clients
+3. Claude can interact with the UI, test flows, and provide visual feedback
 
 ### Debugging Socket Issues
 

@@ -10,6 +10,7 @@ import type { ServerToClientEvents, ClientToServerEvents, Player, GameDefinition
 import type { ServerGameSession, GameHandler, GameServer, GameSocket } from './types.js';
 import { aiDrawingGame } from './games/ai-drawing.js';
 import { wordScrambleGame } from './games/word-scramble.js';
+import { groupStoryGame } from './games/group-story.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -48,6 +49,7 @@ const games = new Map<string, GameHandler>();
 // Register games
 games.set(aiDrawingGame.id, aiDrawingGame);
 games.set(wordScrambleGame.id, wordScrambleGame);
+games.set(groupStoryGame.id, groupStoryGame);
 
 // Get available games list
 function getGamesList(): GameDefinition[] {
