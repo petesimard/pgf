@@ -114,17 +114,32 @@ async function generateStory(session: ServerGameSession, io: GameServer): Promis
   try {
     console.log('[GroupStory] Starting story generation...');
 
-    // 1. Build context from previous story
+    // 1. Filter out empty answers
+    const validAnswers = state.questions.filter((q) => {
+      const answer = state.answers[q.playerId];
+      return answer && answer.trim().length > 0;
+    });
+
+    // 2. Check if all answers are empty
+    if (validAnswers.length === 0) {
+      console.log('[GroupStory] All answers are empty, cannot generate story');
+      state.phase = 'error';
+      state.errorMessage = 'All players submitted empty answers. Please try again with some creative input!';
+      broadcastSessionState(session, io);
+      return;
+    }
+
+    // 3. Build context from previous story
     const previousStory =
       state.storyHistory.length > 0
         ? state.storyHistory[state.storyHistory.length - 1].text
         : null;
 
-    // 2. Build questions and answers section
-    const questionsAndAnswers = state.questions
+    // 4. Build questions and answers section (only valid answers)
+    const questionsAndAnswers = validAnswers
       .map((q) => {
         const player = session.players.find((p) => p.id === q.playerId);
-        const answer = state.answers[q.playerId] || '(no answer)';
+        const answer = state.answers[q.playerId];
         return `${player?.name}: ${q.question} → "${answer}"`;
       })
       .join('\n');
@@ -271,7 +286,7 @@ async function startAnsweringPhase(session: ServerGameSession, io: GameServer): 
     duration: ANSWERING_TIME,
     onTick: (timeRemaining) => {
       const currentState = session.gameState as GroupStoryState;
-      if (currentState.phase !== 'answering') {
+      if (!currentState || currentState.phase !== 'answering') {
         answerTimer?.stop();
         return;
       }
@@ -280,7 +295,7 @@ async function startAnsweringPhase(session: ServerGameSession, io: GameServer): 
     },
     onComplete: () => {
       const currentState = session.gameState as GroupStoryState;
-      if (currentState.phase !== 'answering') return;
+      if (!currentState || currentState.phase !== 'answering') return;
 
       console.log('[GroupStory] Timer expired, transitioning to generating...');
       currentState.phase = 'generating';
@@ -404,6 +419,25 @@ export const groupStoryGame: GameHandler = {
       state.errorMessage = undefined;
       broadcastSessionState(session, io);
       generateStory(session, io); // Async, no await
+
+      return;
+    }
+
+    // Handle retry-questions action (GM only) - restart the current round with new questions
+    if (action.type === 'retry-questions') {
+      if (!player.isGameMaster) {
+        console.log('[GroupStory] Non-GM tried to retry questions');
+        return;
+      }
+
+      if (state.phase !== 'error') {
+        console.log('[GroupStory] Retry questions attempted outside error phase');
+        return;
+      }
+
+      console.log('[GroupStory] GM retrying questions for current round...');
+      state.errorMessage = undefined;
+      startAnsweringPhase(session, io); // Async, no await
 
       return;
     }

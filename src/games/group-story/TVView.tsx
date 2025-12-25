@@ -3,7 +3,6 @@ import type { TVViewProps } from '../types';
 import TVGameScene from '@/components/shared/GameScene';
 import Countdown from '@/components/shared/Countdown';
 import { Card } from '@/components/ui/card';
-import { Check } from 'lucide-react';
 
 interface GroupStoryState {
   phase: 'answering' | 'generating' | 'displaying' | 'error';
@@ -77,38 +76,7 @@ function TVView({ players, gameState, socket }: TVViewProps) {
           <div className="flex justify-center mb-6">
             <Countdown timeRemaining={localTimeRemaining} label="Time Remaining" size="xl" />
           </div>
-
-          <div className="grid grid-cols-2 gap-4 max-w-6xl mx-auto">
-            {state.questions.map((q) => {
-              const player = players.find((p) => p.id === q.playerId);
-              const hasAnswered = state.answers[q.playerId] !== undefined;
-
-              return (
-                <Card
-                  key={q.playerId}
-                  className={hasAnswered ? 'border-green-500 border-2' : 'border-border'}
-                >
-                  <div className="p-6">
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="text-2xl font-bold">{player?.name || 'Unknown'}</div>
-                      {hasAnswered && (
-                        <div className="flex items-center gap-2 text-green-500">
-                          <Check className="w-6 h-6" />
-                          <span className="text-lg font-bold">Answered</span>
-                        </div>
-                      )}
-                    </div>
-                    <div className="text-xl text-muted-foreground">{q.question}</div>
-                    {hasAnswered && (
-                      <div className="mt-3 text-lg text-foreground font-medium">
-                        "{state.answers[q.playerId]}"
-                      </div>
-                    )}
-                  </div>
-                </Card>
-              );
-            })}
-          </div>
+          
         </div>
       </TVGameScene>
     );
@@ -132,23 +100,21 @@ function TVView({ players, gameState, socket }: TVViewProps) {
   // Displaying Phase
   if (state.phase === 'displaying' && state.currentStory) {
     return (
-      <div className="min-h-screen flex flex-col bg-background p-8">
+      <div className="min-h-screen flex flex-col bg-background p-6">
         <div className="max-[96vw] mx-auto w-full">
-          <Card className="p-8 bg-card/95">
-            <h2 className="text-lg font-bold mb-2 text-center">Round {state.currentRound}</h2>
-
+          <Card className="p-5 bg-card/95">
             <div className="relative">
               {/* Story Image - floated left */}
               {currentImage && (
                 <img
                   src={`data:image/png;base64,${currentImage}`}
                   alt="Story illustration"
-                  className="float-left mr-6 mb-4 max-w-[25%] rounded-2xl shadow-2xl"
+                  className="float-left mr-6 mb-4 max-w-[38%] rounded-xl shadow-2xl"
                 />
               )}
 
               {/* Story Text - flows around image */}
-              <p className="text-lg leading-relaxed text-foreground whitespace-pre-wrap">
+              <p className="text-xl leading-relaxed text-foreground whitespace-pre-wrap">
                 {state.currentStory.text}
               </p>
 
@@ -163,16 +129,22 @@ function TVView({ players, gameState, socket }: TVViewProps) {
 
   // Error Phase
   if (state.phase === 'error') {
+    const isEmptyAnswersError = state.errorMessage?.includes('empty answers');
+
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <Card className="p-12 text-center max-w-2xl border-destructive border-2">
-          <div className="text-6xl mb-6">⚠️</div>
-          <h2 className="text-4xl font-bold text-destructive mb-4">Story Generation Failed</h2>
+          <div className="text-6xl mb-6">{isEmptyAnswersError ? '📝' : '⚠️'}</div>
+          <h2 className="text-4xl font-bold text-destructive mb-4">
+            {isEmptyAnswersError ? 'No Answers Provided' : 'Story Generation Failed'}
+          </h2>
           <p className="text-xl text-muted-foreground mb-6">
             {state.errorMessage || 'An unknown error occurred'}
           </p>
           <p className="text-lg text-muted-foreground">
-            The Game Master can retry generation from their device
+            {isEmptyAnswersError
+              ? 'The Game Master can retry with new questions'
+              : 'The Game Master can retry generation from their device'}
           </p>
         </Card>
       </div>

@@ -87,6 +87,11 @@ function ClientView({ player, gameState, sendAction, endGame }: ClientViewProps)
     sendAction({ type: 'retry-generation' });
   };
 
+  const handleRetryQuestions = () => {
+    console.log('[ClientView] GM retrying questions');
+    sendAction({ type: 'retry-questions' });
+  };
+
   if (!state) {
     return (
       <div className="flex-1 flex items-center justify-center p-4">
@@ -205,12 +210,17 @@ function ClientView({ player, gameState, sendAction, endGame }: ClientViewProps)
 
   // Error Phase
   if (state.phase === 'error') {
+    // Check if error is due to empty answers
+    const isEmptyAnswersError = state.errorMessage?.includes('empty answers');
+
     return (
       <div className="flex-1 flex flex-col p-4">
         <Card className="p-8 mb-6 border-destructive border-2">
           <div className="text-center mb-6">
             <AlertCircle className="w-16 h-16 text-destructive mx-auto mb-3" />
-            <h2 className="text-2xl font-bold text-destructive mb-2">Generation Failed</h2>
+            <h2 className="text-2xl font-bold text-destructive mb-2">
+              {isEmptyAnswersError ? 'No Answers Provided' : 'Generation Failed'}
+            </h2>
             <p className="text-muted-foreground">{state.errorMessage || 'Unknown error'}</p>
           </div>
         </Card>
@@ -218,9 +228,15 @@ function ClientView({ player, gameState, sendAction, endGame }: ClientViewProps)
         {/* GM Retry Button */}
         {isGameMaster && (
           <div className="space-y-3">
-            <Button onClick={handleRetry} className="w-full h-14 text-lg bg-primary">
-              Retry Generation
-            </Button>
+            {isEmptyAnswersError ? (
+              <Button onClick={handleRetryQuestions} className="w-full h-14 text-lg bg-primary">
+                Retry Questions
+              </Button>
+            ) : (
+              <Button onClick={handleRetry} className="w-full h-14 text-lg bg-primary">
+                Retry Generation
+              </Button>
+            )}
 
             {endGame && (
               <Button onClick={endGame} variant="destructive" className="w-full h-14 text-lg">
