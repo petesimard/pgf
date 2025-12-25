@@ -207,11 +207,11 @@ function TVView({ players, gameState, socket }: TVViewProps) {
     return (
       <div className="min-h-screen flex flex-col bg-background">
         <div className="flex-1 flex flex-col items-center justify-center p-6">
-          <div className="text-center mb-6">
+          <div className="text-center mb-3">
             <h1 className="text-4xl font-extrabold bg-gradient-to-r from-primary via-[#a855f7] to-[#ec4899] bg-clip-text text-transparent mb-3">
               🏆 {allRevealed ? 'Final Results' : 'Revealing Results'} 🏆
             </h1>
-            <div className="text-xl text-muted-foreground mb-1.5">
+            <div className="text-xl text-muted-foreground">
               The word was: <span className="font-bold text-primary">{state.word}</span>
             </div>
             <div className="text-lg text-muted-foreground">
@@ -251,11 +251,11 @@ function TVView({ players, gameState, socket }: TVViewProps) {
                   {currentResult.playerName}
                 </div>
                 {drawingImages[currentResult.playerId] && (
-                  <div className="mb-5 flex justify-center">
+                  <div className="mb-5 flex justify-center pl-20">
                     <img
                       src={drawingImages[currentResult.playerId]}
                       alt={`${currentResult.playerName}'s drawing`}
-                      className="max-w-md max-h-64 rounded-lg border-2 border-border shadow-md object-contain bg-white"
+                      className="rounded-sm border-2 border-border shadow-md object-contain bg-white"
                     />
                   </div>
                 )}
