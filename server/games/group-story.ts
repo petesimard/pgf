@@ -258,10 +258,12 @@ async function startAnsweringPhase(session: ServerGameSession, io: GameServer): 
       ? state.storyHistory[state.storyHistory.length - 1].text
       : undefined;
 
-  const questionTexts = await generateQuestions(session.players.length, previousStory);
+  // Only generate questions for active players
+  const activePlayers = session.players.filter(p => p.isActive);
+  const questionTexts = await generateQuestions(activePlayers.length, previousStory);
 
-  // Assign questions to players
-  state.questions = session.players.map((player, index) => ({
+  // Assign questions to active players only
+  state.questions = activePlayers.map((player, index) => ({
     playerId: player.id,
     question: questionTexts[index] || FALLBACK_QUESTIONS[index % FALLBACK_QUESTIONS.length],
   }));
@@ -309,10 +311,11 @@ async function startAnsweringPhase(session: ServerGameSession, io: GameServer): 
 }
 
 /**
- * Checks if all players have submitted answers
+ * Checks if all active players have submitted answers
  */
 function allPlayersSubmitted(state: GroupStoryState, session: ServerGameSession): boolean {
-  return session.players.every((player) => state.answers[player.id] !== undefined);
+  const activePlayers = session.players.filter(p => p.isActive);
+  return activePlayers.every((player) => state.answers[player.id] !== undefined);
 }
 
 export const groupStoryGame: GameHandler = {
