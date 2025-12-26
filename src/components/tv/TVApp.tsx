@@ -3,11 +3,13 @@ import { useSocket } from '../../hooks/useSocket';
 import Lobby from './Lobby';
 import GameContainer from './GameContainer';
 import AvatarHost from './AvatarHost';
+import BackgroundMusic from './BackgroundMusic';
 
 function TVApp() {
   const { connected, session, createSession, socket, wasReset, clearReset } = useSocket();
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [isSpeaking, setIsSpeaking] = useState(false);
 
   useEffect(() => {
     if (connected && !sessionId) {
@@ -76,7 +78,8 @@ function TVApp() {
       ) : (
         <Lobby session={session} />
       )}
-      <AvatarHost socket={socket} />
+      <AvatarHost socket={socket} onSpeakingChange={setIsSpeaking} />
+      <BackgroundMusic isSpeaking={isSpeaking} />
     </>
   );
 }

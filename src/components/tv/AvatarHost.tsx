@@ -5,6 +5,7 @@ import './AvatarHost.css';
 
 interface AvatarHostProps {
   socket: Socket<ServerToClientEvents, ClientToServerEvents> | null;
+  onSpeakingChange?: (isSpeaking: boolean) => void;
 }
 
 interface SpeechState {
@@ -16,7 +17,7 @@ interface SpeechState {
   showBubble: boolean;
 }
 
-function AvatarHost({ socket }: AvatarHostProps) {
+function AvatarHost({ socket, onSpeakingChange }: AvatarHostProps) {
   const [currentSpeech, setCurrentSpeech] = useState<SpeechState | null>(null);
   const [isVisible, setIsVisible] = useState(false);
   const [isFadingOut, setIsFadingOut] = useState(false);
@@ -55,8 +56,12 @@ function AvatarHost({ socket }: AvatarHostProps) {
       currentBlobUrlRef.current = null;
     }
     currentMessageIdRef.current = null;
+    const wasSpeaking = isAudioPlayingRef.current;
     isAudioPlayingRef.current = false;
     hasStartedPlayingRef.current = null;
+    if (wasSpeaking) {
+      onSpeakingChange?.(false);
+    }
   };
 
   // Schedule fade-out
@@ -109,12 +114,14 @@ function AvatarHost({ socket }: AvatarHostProps) {
       audio.onended = () => {
         console.log('[AvatarHost] Audio playback completed');
         isAudioPlayingRef.current = false;
+        onSpeakingChange?.(false);
         scheduleFadeOut(1000); // Wait 1 second after audio ends before fading
       };
 
       audio.onerror = (e) => {
         console.error('[AvatarHost] Audio playback error:', e);
         isAudioPlayingRef.current = false;
+        onSpeakingChange?.(false);
         scheduleFadeOut(5000); // Text-only mode, fade after 5 seconds
       };
 
@@ -125,6 +132,7 @@ function AvatarHost({ socket }: AvatarHostProps) {
       audio.onplay = () => {
         console.log('[AvatarHost] Audio started playing');
         isAudioPlayingRef.current = true;
+        onSpeakingChange?.(true);
       };
 
       audio.onpause = () => {
@@ -140,6 +148,7 @@ function AvatarHost({ socket }: AvatarHostProps) {
         .catch((error) => {
           console.error('[AvatarHost] Failed to play audio:', error);
           isAudioPlayingRef.current = false;
+          onSpeakingChange?.(false);
           // Text-only mode: still show text but fade after 5 seconds
           scheduleFadeOut(5000);
         });

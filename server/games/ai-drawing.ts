@@ -421,7 +421,7 @@ async function revealNextResult(session: ServerGameSession, io: GameServer): Pro
 
 export const aiDrawingGame: GameHandler = {
   id: 'ai-drawing',
-  name: 'AI Drawing Contest',
+  name: 'Drawing Contest',
   description: 'Draw a word and let AI judge your masterpiece!',
   minPlayers: 2,
   maxPlayers: 8,
